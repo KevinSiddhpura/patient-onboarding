@@ -1,0 +1,9 @@
+{
+  "parameters": {
+    "show_delete_button": {
+      "defaultValue": { "value": "false" },
+      "description": "Shows the delete control to doctors. Visibility only; Firestore Rules decide who may delete.",
+      "valueType": "BOOLEAN"
+    }
+  }
+}

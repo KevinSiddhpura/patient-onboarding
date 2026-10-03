@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasRole(role) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isValidText(value, maxLength) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= maxLength
+        && value == value.trim();
+    }
+
+    function hasValidPatientText(patient) {
+      return isValidText(patient.name, 100)
+        && isValidText(patient.phone, 20)
+        && isValidText(patient.condition, 500);
+    }
+
+    match /users/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /patients/{patientId} {
+      allow read: if hasRole('receptionist') || hasRole('doctor');
+
+      allow create: if hasRole('receptionist')
+        && request.resource.data.keys().hasAll(
+             ['patientId', 'name', 'phone', 'condition', 'createdAt', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(
+             ['patientId', 'name', 'phone', 'condition', 'createdAt', 'updatedAt'])
+        && request.resource.data.patientId == patientId
+        && hasValidPatientText(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if hasRole('doctor')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+             ['name', 'phone', 'condition', 'updatedAt'])
+        && hasValidPatientText(request.resource.data)
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if hasRole('doctor');
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,340 @@
+/* ---------- Base ---------- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #eef4f8;
+  color: #1e293b;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+/* ---------- Layout ---------- */
+
+.app {
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 28px 20px;
+}
+
+/* ---------- Header ---------- */
+
+.header {
+  width: 100%;
+  background: #0f4c5c;
+  color: white;
+  padding: 18px max(20px, calc((100% - 1000px) / 2));
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.header p {
+  margin: 5px 0 0;
+  color: #d5e8ed;
+  font-size: 14px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info span {
+  background: #e0f2f1;
+  color: #0f4c5c;
+  padding: 5px 9px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  width: 100%;
+  background: white;
+  border: 1px solid #d9e2e8;
+  border-radius: 8px;
+  padding: 22px;
+  margin-bottom: 22px;
+  box-shadow: 0 2px 8px rgba(15, 76, 92, 0.06);
+}
+
+.card h1,
+.card h2 {
+  margin-top: 0;
+  color: #0f4c5c;
+}
+
+.login-card {
+  max-width: 450px;
+  margin: 70px auto;
+}
+
+/* ---------- Forms ---------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+}
+
+.form-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #b8c5ce;
+  border-radius: 5px;
+  background: white;
+  color: #1e293b;
+  outline: none;
+}
+
+.form-group input:focus {
+  border-color: #168aad;
+  box-shadow: 0 0 0 2px rgba(22, 138, 173, 0.12);
+}
+
+/* ---------- Buttons ---------- */
+
+button {
+  border: none;
+  border-radius: 5px;
+  padding: 10px 16px;
+  background: #168aad;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: #11758f;
+}
+
+.form > button {
+  align-self: flex-start;
+}
+
+.delete-button {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-button:hover:not(:disabled) {
+  background: #b92c3a;
+}
+
+/* ---------- Messages ---------- */
+
+.message {
+  margin: 0 0 20px;
+  padding: 11px 14px;
+  background: #dff3f7;
+  color: #0f4c5c;
+  border-left: 4px solid #168aad;
+  border-radius: 4px;
+}
+
+/* ---------- Patient Section ---------- */
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.section-heading h2 {
+  margin: 0;
+}
+
+.section-heading span {
+  background: #e6f4f7;
+  color: #0f4c5c;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.patient-list {
+  width: 100%;
+}
+
+.patient-card {
+  padding: 18px 0;
+  border-bottom: 1px solid #e2e8f0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+}
+
+.patient-card:last-child {
+  border-bottom: none;
+}
+
+.patient-card h3 {
+  margin: 0 0 8px;
+  color: #0f4c5c;
+}
+
+.patient-card p {
+  margin: 5px 0;
+  color: #475569;
+}
+
+.patient-card small {
+  color: #94a3b8;
+  word-break: break-all;
+}
+
+.patient-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ---------- States ---------- */
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondary-button {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #cbd5e1;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+}
+
+.message-error {
+  background: #fde8e8;
+  color: #9b1c1c;
+  border-left-color: #dc3545;
+}
+
+.field-error {
+  color: #b92c3a;
+  font-size: 13px;
+}
+
+.form-group input[aria-invalid="true"] {
+  border-color: #dc3545;
+}
+
+.config-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.patient-card-editing {
+  display: block;
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 650px) {
+  .config-status {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .container {
+    padding: 18px 12px;
+  }
+
+  .header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .user-info {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .form-row {
+    flex-direction: column;
+  }
+
+  .patient-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .patient-actions {
+    width: 100%;
+  }
+
+  .patient-actions button {
+    flex: 1;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
