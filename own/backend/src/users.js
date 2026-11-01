@@ -1,5 +1,14 @@
 import { randomUUID } from "node:crypto";
 
+export const VALID_ROLES = ["receptionist", "doctor"];
+
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
+
+export function isValidEmail(value) {
+  return typeof value === "string" && value.length <= MAX_EMAIL_LENGTH && EMAIL_FORMAT.test(value);
+}
+
 export function insertUser(db, { email, name, role, passwordHash }) {
   const uid = randomUUID();
   db.prepare(

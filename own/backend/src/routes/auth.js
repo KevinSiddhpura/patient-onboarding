@@ -3,10 +3,8 @@ import { ApiError } from "../errors.js";
 import { loadSession, requireSession, SESSION_COOKIE } from "../middleware.js";
 import { burnPasswordCheck, verifyPassword } from "../passwords.js";
 import { createSession, deleteExpiredSessions, deleteSession } from "../sessions.js";
-import { findUserByEmail } from "../users.js";
+import { findUserByEmail, isValidEmail } from "../users.js";
 
-const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_EMAIL_LENGTH = 254;
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function cookieOptions(req) {
@@ -24,7 +22,7 @@ export function createAuthRouter({ loginLimiter }) {
   router.post("/login", async (req, res) => {
     const { email, password } = req.body ?? {};
 
-    if (typeof email !== "string" || email.length > MAX_EMAIL_LENGTH || !EMAIL_FORMAT.test(email)) {
+    if (!isValidEmail(email)) {
       throw new ApiError(400, "auth/invalid-email");
     }
 
