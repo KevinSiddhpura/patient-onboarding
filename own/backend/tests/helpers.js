@@ -34,6 +34,7 @@ export async function startTestApp(options = {}) {
     db,
     app,
     close: async () => {
+      app.locals.events.closeAll();
       server.closeAllConnections();
       await new Promise((resolve) => server.close(resolve));
       db.close();

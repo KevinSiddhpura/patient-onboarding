@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { resolve } from "node:path";
 import express from "express";
 import { ApiError, errorHandler } from "./errors.js";
+import { createEventHub, createEventsRouter } from "./events.js";
 import { createLoginLimiter } from "./loginLimiter.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createConfigRouter } from "./routes/config.js";
@@ -39,11 +40,13 @@ export function createApp({
   proxySecret = null,
   staticDir = null,
   loginLimiter = createLoginLimiter(),
+  events = createEventHub(),
 } = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.locals.db = db;
   app.locals.production = production;
+  app.locals.events = events;
 
   if (proxySecret) {
     // Only safe with the secret check below, which stops direct callers forging X-Forwarded-For.
@@ -58,6 +61,7 @@ export function createApp({
   api.use("/users", createUsersRouter());
   api.use("/patients", createPatientsRouter());
   api.use("/config", createConfigRouter());
+  api.use("/events", createEventsRouter());
   api.use(() => {
     throw new ApiError(404, "not-found");
   });

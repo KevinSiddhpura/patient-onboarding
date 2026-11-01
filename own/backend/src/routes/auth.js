@@ -59,7 +59,7 @@ export function createAuthRouter({ loginLimiter }) {
 
   router.post("/logout", requireSession, (req, res) => {
     deleteSession(req.app.locals.db, req.session.tokenHash);
-    req.app.locals.events?.closeSession(req.session.tokenHash);
+    req.app.locals.events.closeSession(req.session.tokenHash);
     res.clearCookie(SESSION_COOKIE, cookieOptions(req));
     res.status(204).end();
   });

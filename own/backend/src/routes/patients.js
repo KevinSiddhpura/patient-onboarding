@@ -19,7 +19,7 @@ function toJson(row) {
 }
 
 function notifyClients(req) {
-  req.app.locals.events?.broadcastChanged();
+  req.app.locals.events.broadcastChanged();
 }
 
 export function createPatientsRouter() {
