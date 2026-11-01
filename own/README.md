@@ -144,4 +144,4 @@ Things to know about production:
 - **Direct access.** The app rejects anything that didn't come through Nginx, using the secret header. Someone who types a password at the raw `http://<ip>:<port>` address would still send it unencrypted before seeing the error. If the panel can assign the port on `127.0.0.1`, that closes it completely.
 - **Backups.** Use the `backup` command and download the file from the panel's file manager, or stop the server before taking a panel backup. Copying the `.db` file while the app is running can miss recent writes.
 - **One process.** Live updates are kept in memory, so this only works with a single server process.
-- **Login limit.** 10 failed attempts per email and IP in 15 minutes. It's kept in memory, so a restart resets it.
+- **Login limit.** 10 failed attempts per email and IP in 15 minutes, and 100 attempts of any kind per IP. It's kept in memory, so a restart resets it.

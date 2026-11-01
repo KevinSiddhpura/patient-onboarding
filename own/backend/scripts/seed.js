@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb } from "../src/db.js";
@@ -9,6 +10,11 @@ const ACCOUNTS = [
   { email: "receptionist@example.test", name: "Demo Receptionist", role: "receptionist" },
   { email: "doctor@example.test", name: "Demo Doctor", role: "doctor" },
 ];
+
+// Same settings as the server, so the production check and the database path match it.
+if (existsSync(".env")) {
+  process.loadEnvFile(".env");
+}
 
 if (process.env.NODE_ENV === "production") {
   console.error("Seed is for local development only.");

@@ -233,6 +233,24 @@ describe("login limit", () => {
     assert.equal(response.json.error.code, "auth/too-many-requests");
   });
 
+  test("API responses are not stored by the browser", async () => {
+    const response = await fetch(`${ctx.baseUrl}/api/auth/me`);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  });
+
+  test("one IP trying many emails hits the per-IP limit", async () => {
+    await ctx.close();
+    ctx = await startTestApp({ ipLimiter: createLoginLimiter({ max: 3 }) });
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await login(`nobody${attempt}@example.test`, "wrong password");
+      assert.equal(response.status, 401);
+    }
+
+    const response = await login("nobody9@example.test", "wrong password");
+    assert.equal(response.status, 429);
+  });
+
   test("success clears the failure count", async () => {
     await addUser();
     for (let attempt = 0; attempt < 9; attempt += 1) {

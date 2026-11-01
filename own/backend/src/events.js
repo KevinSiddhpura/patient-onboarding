@@ -1,5 +1,5 @@
 import express from "express";
-import { requireRole, requireSession } from "./middleware.js";
+import { requireSession, requireStaff } from "./middleware.js";
 
 // Clients re-fetch the list on this signal, so patient data always goes through the role checks.
 const CHANGED_FRAME = "event: changed\ndata: {}\n\n";
@@ -29,8 +29,8 @@ export function createEventHub({ heartbeatMs = 25000 } = {}) {
   }
 
   return {
-    add(tokenHash, res) {
-      const client = { tokenHash, res };
+    add({ tokenHash, user }, res) {
+      const client = { tokenHash, email: user.email, res };
       clients.add(client);
       res.on("close", () => {
         clients.delete(client);
@@ -53,6 +53,13 @@ export function createEventHub({ heartbeatMs = 25000 } = {}) {
         }
       }
     },
+    closeUser(email) {
+      for (const client of [...clients]) {
+        if (client.email === email) {
+          close(client);
+        }
+      }
+    },
     closeAll() {
       for (const client of [...clients]) {
         close(client);
@@ -67,14 +74,14 @@ export function createEventHub({ heartbeatMs = 25000 } = {}) {
 export function createEventsRouter() {
   const router = express.Router();
 
-  router.get("/", requireSession, requireRole("receptionist", "doctor"), (req, res) => {
+  router.get("/", requireSession, requireStaff, (req, res) => {
     res.set({
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
       "X-Accel-Buffering": "no",
     });
     res.flushHeaders();
-    req.app.locals.events.add(req.session.tokenHash, res);
+    req.app.locals.events.add(req.session, res);
   });
 
   return router;

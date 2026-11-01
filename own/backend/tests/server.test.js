@@ -201,6 +201,14 @@ describe("seed", () => {
     db.close();
   });
 
+  test("refuses to run when a .env file sets production", async () => {
+    writeFileSync(join(dataDir, ".env"), "NODE_ENV=production\n");
+
+    const state = runNode(resolve("scripts/seed.js"), { NODE_ENV: undefined }, dataDir);
+
+    assert.equal(await state.exited, 1);
+  });
+
   test("creates both accounts, prints the password, and can run twice", async () => {
     const first = runNode("scripts/seed.js");
     assert.equal(await first.exited, 0);

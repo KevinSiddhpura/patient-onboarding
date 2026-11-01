@@ -14,7 +14,7 @@ function cookieOptions(req) {
   };
 }
 
-export function createAuthRouter({ loginLimiter }) {
+export function createAuthRouter({ loginLimiter, ipLimiter }) {
   const router = express.Router();
 
   router.post("/login", async (req, res) => {
@@ -28,8 +28,9 @@ export function createAuthRouter({ loginLimiter }) {
       throw new ApiError(401, "auth/invalid-credential");
     }
 
+    // Without a per-IP cap, trying many emails avoids the per-email limit and pushes old entries out of it.
     const limitKey = `${email.toLowerCase()}|${req.ip}`;
-    if (!loginLimiter.tryAcquire(limitKey)) {
+    if (!ipLimiter.tryAcquire(req.ip) || !loginLimiter.tryAcquire(limitKey)) {
       throw new ApiError(429, "auth/too-many-requests");
     }
 

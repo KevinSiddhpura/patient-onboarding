@@ -127,6 +127,23 @@ describe("user remove and list", () => {
     assert.equal(count, 0);
   });
 
+  test("user remove closes that user's live update streams", async () => {
+    const closed = [];
+    insertUser(ctx.db, {
+      email: "doc@example.test",
+      name: "Asha",
+      role: "doctor",
+      passwordHash: VALID_HASH,
+    });
+
+    await runCommand(ctx.db, "user remove DOC@example.test", () => {}, {
+      dataDir,
+      events: { closeUser: (email) => closed.push(email) },
+    });
+
+    assert.deepEqual(closed, ["doc@example.test"]);
+  });
+
   test("user remove on an unknown email prints a message", async () => {
     await run("user remove nobody@example.test");
     assert.match(printed(), /no user/i);

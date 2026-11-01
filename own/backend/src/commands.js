@@ -49,10 +49,12 @@ function runUserAdd(db, [email, role, passwordHash, ...nameParts], print) {
   }
 }
 
-function runUserRemove(db, [email], print) {
+function runUserRemove(db, [email], events, print) {
   if (email === undefined) {
     print("Usage: user remove <email>");
   } else if (removeUser(db, email)) {
+    // The browser reconnects, gets a 401 and signs out, instead of staying on the patient list.
+    events?.closeUser(email.toLowerCase());
     print(`Removed ${email.toLowerCase()}.`);
   } else {
     print(`No user with email ${email.toLowerCase()}.`);
@@ -82,7 +84,7 @@ async function runBackup(db, dataDir, print) {
   }
 }
 
-export async function runCommand(db, line, print, { dataDir }) {
+export async function runCommand(db, line, print, { dataDir, events }) {
   const [command, ...args] = line.trim().split(/\s+/);
 
   try {
@@ -93,7 +95,7 @@ export async function runCommand(db, line, print, { dataDir }) {
     } else if (command === "user" && args[0] === "add") {
       runUserAdd(db, args.slice(1), print);
     } else if (command === "user" && args[0] === "remove") {
-      runUserRemove(db, args.slice(1), print);
+      runUserRemove(db, args.slice(1), events, print);
     } else if (command === "user" && args[0] === "list") {
       runUserList(db, print);
     } else if (command === "backup") {

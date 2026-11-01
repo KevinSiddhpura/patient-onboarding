@@ -1,5 +1,6 @@
 import { ApiError } from "./errors.js";
 import { findSession } from "./sessions.js";
+import { VALID_ROLES } from "./users.js";
 
 export const SESSION_COOKIE = "session";
 
@@ -36,3 +37,5 @@ export function requireRole(...roles) {
     next();
   };
 }
+
+export const requireStaff = requireRole(...VALID_ROLES);

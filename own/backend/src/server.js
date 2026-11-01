@@ -52,7 +52,7 @@ const server = app.listen(port, "0.0.0.0", (error) => {
 
 // The Pterodactyl console writes to stdin, and there is no shell to run scripts from.
 createInterface({ input: process.stdin }).on("line", (line) => {
-  runCommand(db, line, console.log, { dataDir });
+  runCommand(db, line, console.log, { dataDir, events: app.locals.events });
 });
 
 function shutDown() {

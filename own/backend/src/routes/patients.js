@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import express from "express";
 import { ApiError } from "../errors.js";
-import { requireRole, requireSession } from "../middleware.js";
+import { requireRole, requireSession, requireStaff } from "../middleware.js";
 import { parsePatient } from "../validation.js";
 
 const PATIENT_LIST_LIMIT = 50;
@@ -22,7 +22,7 @@ export function createPatientsRouter() {
   const router = express.Router();
   router.use(requireSession);
 
-  router.get("/", requireRole("receptionist", "doctor"), (req, res) => {
+  router.get("/", requireStaff, (req, res) => {
     const rows = req.app.locals.db
       .prepare("SELECT * FROM patients ORDER BY created_at DESC, rowid DESC LIMIT ?")
       .all(PATIENT_LIST_LIMIT);

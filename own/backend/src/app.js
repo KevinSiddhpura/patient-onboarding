@@ -35,12 +35,19 @@ function requireJsonOnWrites(req, res, next) {
   next();
 }
 
+// Patient data must not stay in the browser's cache after logout.
+function noStore(req, res, next) {
+  res.set("Cache-Control", "no-store");
+  next();
+}
+
 export function createApp({
   db,
   production = false,
   proxySecret = null,
   staticDir = null,
   loginLimiter = createLoginLimiter(),
+  ipLimiter = createLoginLimiter({ max: 100 }),
   events = createEventHub(),
 } = {}) {
   const app = express();
@@ -56,9 +63,10 @@ export function createApp({
   }
 
   const api = express.Router();
+  api.use(noStore);
   api.use(requireJsonOnWrites);
   api.use(express.json({ limit: "10kb" }));
-  api.use("/auth", createAuthRouter({ loginLimiter }));
+  api.use("/auth", createAuthRouter({ loginLimiter, ipLimiter }));
   api.use("/users", createUsersRouter());
   api.use("/patients", createPatientsRouter());
   api.use("/config", createConfigRouter());

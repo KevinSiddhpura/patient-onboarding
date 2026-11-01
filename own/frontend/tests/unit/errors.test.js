@@ -4,8 +4,7 @@ import { describeError } from "../../src/errors.js";
 
 test("maps known error codes", () => {
   assert.equal(describeError({ code: "auth/invalid-credential" }), "Incorrect email or password.");
-  assert.equal(describeError({ code: "auth/wrong-password" }), "Incorrect email or password.");
-  assert.equal(describeError({ code: "auth/user-not-found" }), "Incorrect email or password.");
+  assert.equal(describeError({ code: "not-found" }), "This patient no longer exists.");
   assert.equal(describeError({ code: "permission-denied" }), "You do not have permission to do that.");
 });
 
