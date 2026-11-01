@@ -124,9 +124,9 @@ The backend runs on my Pterodactyl panel, with Nginx on the same machine handlin
 
 1. Build the frontend on my machine: `cd frontend && npm run build`.
 2. Create a server with a Node.js 24 egg, with `src/server.js` as the startup file.
-3. Upload `backend/src`, `backend/package.json` and `backend/package-lock.json` to `/home/container`, and the contents of `frontend/dist` to `/home/container/public`. Don't upload `node_modules`, because it's built for the machine it was installed on. Run `npm install --omit=dev` on the panel instead.
+3. Upload `backend/src`, `backend/package.json` and `backend/package-lock.json` to `/home/container`, and the contents of `frontend/dist` to `/home/container/public`. Don't upload `node_modules`, because it's built for the machine it was installed on. There's no shell on the panel, so the install has to come from the egg. The generic Node egg runs `npm install` on startup when it finds a `package.json`, so I check that mine does. If the server stops with a "Cannot find package" error, it doesn't, and the panel admin has to change the egg.
 4. Generate a secret: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
-5. Set these variables on the server:
+5. Upload a file called `.env` to `/home/container` with these settings. Eggs usually only show their own variables on the Startup tab, so the file is the reliable way. It sits outside `public`, so it's never served.
 
    ```
    NODE_ENV=production
@@ -135,8 +135,8 @@ The backend runs on my Pterodactyl panel, with Nginx on the same machine handlin
    PROXY_SECRET=<the secret>
    ```
 
-6. Start the server and type `help` in the console. If the list prints, console input is reaching the app.
-7. Copy `deploy/nginx.conf.example`, fill in the domain, port and secret, and get a certificate with Let's Encrypt.
+6. Start the server and read the console. A line saying `NODE_ENV is not production` means the `.env` file wasn't read, so stop and fix that first. Then type `help`. If the list prints, console input is reaching the app.
+7. Set up Nginx from `deploy/nginx.conf.example`, following the certificate steps at the top of that file. This needs access to the machine itself. I don't have SSH right now, so the panel admin has to do it and needs the domain, the allocation's IP and port, and the secret.
 8. Add the users, then check the site on the domain. Opening `http://<ip>:<port>` directly should give a 403.
 
 Things to know about production:

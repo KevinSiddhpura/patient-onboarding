@@ -15,7 +15,6 @@ export async function apiRequest(path, { method = "GET", body } = {}) {
   try {
     response = await fetch(`/api${path}`, {
       method,
-      credentials: "same-origin",
       headers: method === "GET" ? {} : { "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
     });

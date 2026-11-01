@@ -18,10 +18,6 @@ function toJson(row) {
   };
 }
 
-function notifyClients(req) {
-  req.app.locals.events.broadcastChanged();
-}
-
 export function createPatientsRouter() {
   const router = express.Router();
   router.use(requireSession);
@@ -45,7 +41,7 @@ export function createPatientsRouter() {
       )
       .run(id, name, phone, condition, now, now);
 
-    notifyClients(req);
+    req.app.locals.events.broadcastChanged();
     res.status(201).json({ id });
   });
 
@@ -63,7 +59,7 @@ export function createPatientsRouter() {
       throw new ApiError(404, "not-found");
     }
 
-    notifyClients(req);
+    req.app.locals.events.broadcastChanged();
     res.json({ id: req.params.id });
   });
 
@@ -73,7 +69,7 @@ export function createPatientsRouter() {
       .run(req.params.id);
 
     if (changes > 0) {
-      notifyClients(req);
+      req.app.locals.events.broadcastChanged();
     }
     res.status(204).end();
   });

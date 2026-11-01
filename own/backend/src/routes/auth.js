@@ -2,10 +2,8 @@ import express from "express";
 import { ApiError } from "../errors.js";
 import { loadSession, requireSession, SESSION_COOKIE } from "../middleware.js";
 import { burnPasswordCheck, verifyPassword } from "../passwords.js";
-import { createSession, deleteExpiredSessions, deleteSession } from "../sessions.js";
+import { createSession, deleteExpiredSessions, deleteSession, SESSION_LIFETIME_MS } from "../sessions.js";
 import { findUserByEmail, isValidEmail } from "../users.js";
-
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function cookieOptions(req) {
   return {
@@ -52,7 +50,7 @@ export function createAuthRouter({ loginLimiter }) {
     deleteExpiredSessions(db);
     res.cookie(SESSION_COOKIE, createSession(db, user.uid), {
       ...cookieOptions(req),
-      maxAge: SESSION_MAX_AGE_MS,
+      maxAge: SESSION_LIFETIME_MS,
     });
     res.json({ uid: user.uid, email: user.email });
   });

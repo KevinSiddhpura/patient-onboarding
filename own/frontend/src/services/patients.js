@@ -2,7 +2,7 @@ import { apiRequest } from "./api.js";
 
 const RECONNECT_DELAY_MS = 5000;
 
-let subscription = null;
+let activeSubscription = null;
 
 // formatTimestamp expects objects with toDate().
 function toTimestamp(iso) {
@@ -17,42 +17,43 @@ function toPatient(row) {
   };
 }
 
-async function loadPatients(sub) {
-  sub.lastRequest += 1;
-  const request = sub.lastRequest;
-  const isStale = () => sub.closed || request !== sub.lastRequest;
+async function loadPatients(subscription) {
+  // Responses can arrive out of order, so only the newest request may update the list.
+  subscription.lastRequest += 1;
+  const request = subscription.lastRequest;
+  const isStale = () => subscription.closed || request !== subscription.lastRequest;
 
   try {
     const rows = await apiRequest("/patients");
     if (!isStale()) {
-      sub.patients = rows.map(toPatient);
-      sub.loaded = true;
-      sub.onChange(sub.patients);
+      subscription.patients = rows.map(toPatient);
+      subscription.loaded = true;
+      subscription.onChange(subscription.patients);
     }
   } catch (error) {
     if (isStale()) {
       return;
     }
     // Once there is a list on screen, keep showing it. The next event fetches it again.
-    if (sub.loaded) {
+    if (subscription.loaded) {
       console.error("Could not refresh patients:", error);
     } else {
-      sub.onError(error);
+      subscription.onError(error);
     }
   }
 }
 
-function openEvents(sub) {
+function openEvents(subscription) {
   const source = new EventSource("/api/events");
-  sub.source = source;
+  subscription.source = source;
 
-  source.addEventListener("changed", () => loadPatients(sub));
-  source.addEventListener("open", () => loadPatients(sub));
+  source.addEventListener("changed", () => loadPatients(subscription));
+  source.addEventListener("open", () => loadPatients(subscription));
   source.addEventListener("error", () => {
     // The browser retries network drops itself, but gives up for good on a 401 or a 502.
     if (source.readyState === EventSource.CLOSED) {
-      loadPatients(sub);
-      sub.reconnectTimer = setTimeout(() => openEvents(sub), RECONNECT_DELAY_MS);
+      loadPatients(subscription);
+      subscription.reconnectTimer = setTimeout(() => openEvents(subscription), RECONNECT_DELAY_MS);
     }
   });
 }
@@ -62,8 +63,8 @@ export async function createPatient({ name, phone, condition }) {
     method: "POST",
     body: { name, phone, condition },
   });
-  if (subscription) {
-    await loadPatients(subscription);
+  if (activeSubscription) {
+    await loadPatients(activeSubscription);
   }
   return id;
 }
@@ -73,23 +74,23 @@ export async function updatePatient(patientId, { name, phone, condition }) {
     method: "PUT",
     body: { name, phone, condition },
   });
-  if (subscription) {
-    await loadPatients(subscription);
+  if (activeSubscription) {
+    await loadPatients(activeSubscription);
   }
 }
 
 export async function deletePatient(patientId) {
   await apiRequest(`/patients/${encodeURIComponent(patientId)}`, { method: "DELETE" });
-  if (subscription) {
+  if (activeSubscription) {
     // PatientRow stays on "Deleting…" until its row goes, so don't depend on the refresh working.
-    subscription.patients = subscription.patients.filter((patient) => patient.id !== patientId);
-    subscription.onChange(subscription.patients);
-    await loadPatients(subscription);
+    activeSubscription.patients = activeSubscription.patients.filter((patient) => patient.id !== patientId);
+    activeSubscription.onChange(activeSubscription.patients);
+    await loadPatients(activeSubscription);
   }
 }
 
 export function subscribeToPatients(onChange, onError) {
-  const sub = {
+  const subscription = {
     onChange,
     onError,
     patients: [],
@@ -99,17 +100,17 @@ export function subscribeToPatients(onChange, onError) {
     source: null,
     reconnectTimer: null,
   };
-  subscription = sub;
+  activeSubscription = subscription;
 
-  loadPatients(sub);
-  openEvents(sub);
+  loadPatients(subscription);
+  openEvents(subscription);
 
   return () => {
-    sub.closed = true;
-    sub.source.close();
-    clearTimeout(sub.reconnectTimer);
-    if (subscription === sub) {
-      subscription = null;
+    subscription.closed = true;
+    subscription.source.close();
+    clearTimeout(subscription.reconnectTimer);
+    if (activeSubscription === subscription) {
+      activeSubscription = null;
     }
   };
 }

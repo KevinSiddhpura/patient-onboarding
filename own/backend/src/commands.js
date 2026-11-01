@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { getFlag, setFlag } from "./db.js";
 import { isPasswordHash } from "./passwords.js";
-import { getFlag, setFlag } from "./routes/config.js";
 import { insertUser, isValidEmail, listUsers, removeUser, VALID_ROLES } from "./users.js";
 
 const HELP = `Commands:

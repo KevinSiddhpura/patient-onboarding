@@ -1,5 +1,9 @@
-# Replace example.com, APP_PORT and CHANGE_ME_SECRET.
-# APP_PORT is the port the panel assigned to the server.
+# Replace example.com, APP_ADDRESS and CHANGE_ME_SECRET.
+# APP_ADDRESS is the IP and port shown on the server's allocation in the panel.
+#
+# The certificate has to exist before Nginx will accept the second block.
+# Add only the first block, run "certbot certonly --nginx -d example.com",
+# then add the second block.
 
 server {
     listen 80;
@@ -24,11 +28,11 @@ server {
     proxy_set_header X-Proxy-Secret CHANGE_ME_SECRET;
 
     location / {
-        proxy_pass http://127.0.0.1:APP_PORT;
+        proxy_pass http://APP_ADDRESS;
     }
 
     location /api/events {
-        proxy_pass http://127.0.0.1:APP_PORT;
+        proxy_pass http://APP_ADDRESS;
         proxy_buffering off;
     }
 }

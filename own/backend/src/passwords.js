@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 const scrypt = promisify(scryptCallback);
 const KEY_LENGTH = 64;
 const SALT_LENGTH = 16;
-const HASH_FORMAT = new RegExp(`^scrypt\\$[0-9a-f]{${SALT_LENGTH * 2}}\\$[0-9a-f]{${KEY_LENGTH * 2}}$`);
+const HASH_FORMAT = /^scrypt\$[0-9a-f]{32}\$[0-9a-f]{128}$/;
 
 export async function hashPassword(password) {
   const salt = randomBytes(SALT_LENGTH);

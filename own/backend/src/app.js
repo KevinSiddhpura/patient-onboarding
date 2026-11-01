@@ -9,6 +9,7 @@ import { createConfigRouter } from "./routes/config.js";
 import { createPatientsRouter } from "./routes/patients.js";
 import { createUsersRouter } from "./routes/users.js";
 
+// timingSafeEqual throws on different lengths, so compare hashes, which are always the same length.
 function sha256(value) {
   return createHash("sha256").update(value).digest();
 }

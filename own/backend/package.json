@@ -9,7 +9,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "check": "node --check src/server.js",
-    "test": "node --test \"tests/**/*.test.js\"",
+    "test": "node --test --test-timeout=30000 \"tests/**/*.test.js\"",
     "lint": "eslint .",
     "user:hash": "node scripts/user-hash.js",
     "seed": "node scripts/seed.js"

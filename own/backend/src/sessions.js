@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+export const SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
 
 function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
