@@ -247,27 +247,68 @@ describe("login limit", () => {
     assert.equal(response.status, 200);
   });
 
-  test("limiter unblocks after the window", () => {
+  test("parallel wrong guesses cannot get past the limit", async () => {
+    await addUser();
+
+    const responses = await Promise.all(
+      Array.from({ length: 30 }, () => login("doc@example.test", "wrong password")),
+    );
+
+    const checked = responses.filter((response) => response.status === 401);
+    const blocked = responses.filter((response) => response.status === 429);
+    assert.equal(checked.length, 10);
+    assert.equal(blocked.length, 20);
+  });
+
+  test("a malformed password does not use up an attempt", async () => {
+    await addUser();
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await login("doc@example.test", "");
+    }
+
+    const response = await login("doc@example.test", TEST_PASSWORD);
+    assert.equal(response.status, 200);
+  });
+
+  test("an email over 254 characters returns 400 auth/invalid-email", async () => {
+    const response = await login(`${"a".repeat(250)}@example.test`, TEST_PASSWORD);
+    assert.equal(response.status, 400);
+    assert.equal(response.json.error.code, "auth/invalid-email");
+  });
+
+  test("limiter refuses after max attempts and unblocks after the window", () => {
     let time = 0;
     const limiter = createLoginLimiter({ max: 2, windowMs: 1000, now: () => time });
 
-    limiter.recordFailure("key");
-    limiter.recordFailure("key");
-    assert.equal(limiter.isBlocked("key"), true);
+    assert.equal(limiter.tryAcquire("key"), true);
+    assert.equal(limiter.tryAcquire("key"), true);
+    assert.equal(limiter.tryAcquire("key"), false);
 
     time = 1001;
-    assert.equal(limiter.isBlocked("key"), false);
+    assert.equal(limiter.tryAcquire("key"), true);
   });
 
   test("limiter forgets expired keys so memory does not grow forever", () => {
     let time = 0;
     const limiter = createLoginLimiter({ max: 2, windowMs: 1000, now: () => time });
 
-    limiter.recordFailure("old");
+    limiter.tryAcquire("old");
     time = 1001;
-    limiter.recordFailure("new");
+    limiter.tryAcquire("new");
 
     assert.equal(limiter.size(), 1);
+  });
+
+  test("limiter keeps at most maxKeys entries, dropping the oldest", () => {
+    const limiter = createLoginLimiter({ max: 1, maxKeys: 2 });
+
+    limiter.tryAcquire("first");
+    limiter.tryAcquire("second");
+    limiter.tryAcquire("third");
+
+    assert.equal(limiter.size(), 2);
+    assert.equal(limiter.tryAcquire("third"), false);
+    assert.equal(limiter.tryAcquire("first"), true);
   });
 
   test("with proxySecret, different X-Forwarded-For values count separately", async () => {

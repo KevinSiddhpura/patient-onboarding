@@ -1,30 +1,46 @@
-export function createLoginLimiter({ max = 10, windowMs = 15 * 60 * 1000, now = Date.now } = {}) {
-  const failures = new Map();
+export function createLoginLimiter({
+  max = 10,
+  windowMs = 15 * 60 * 1000,
+  maxKeys = 10000,
+  now = Date.now,
+} = {}) {
+  // A Map keeps insertion order, and every entry has the same window, so the oldest come first.
+  const attempts = new Map();
 
   function removeExpired() {
-    for (const [key, entry] of failures) {
-      if (now() >= entry.resetAt) {
-        failures.delete(key);
+    for (const [key, entry] of attempts) {
+      if (now() < entry.resetAt) {
+        return;
       }
+      attempts.delete(key);
     }
   }
 
   return {
-    isBlocked(key) {
+    // Counts the attempt before the slow password check, so parallel requests can't all pass.
+    tryAcquire(key) {
       removeExpired();
-      return (failures.get(key)?.count ?? 0) >= max;
-    },
-    recordFailure(key) {
-      removeExpired();
-      const entry = failures.get(key) ?? { count: 0, resetAt: now() + windowMs };
-      entry.count += 1;
-      failures.set(key, entry);
+
+      const entry = attempts.get(key);
+      if (entry) {
+        if (entry.count >= max) {
+          return false;
+        }
+        entry.count += 1;
+        return true;
+      }
+
+      if (attempts.size >= maxKeys) {
+        attempts.delete(attempts.keys().next().value);
+      }
+      attempts.set(key, { count: 1, resetAt: now() + windowMs });
+      return true;
     },
     clear(key) {
-      failures.delete(key);
+      attempts.delete(key);
     },
     size() {
-      return failures.size;
+      return attempts.size;
     },
   };
 }

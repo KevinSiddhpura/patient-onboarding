@@ -6,6 +6,7 @@ import { createSession, deleteExpiredSessions, deleteSession } from "../sessions
 import { findUserByEmail } from "../users.js";
 
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_EMAIL_LENGTH = 254;
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function cookieOptions(req) {
@@ -23,28 +24,29 @@ export function createAuthRouter({ loginLimiter }) {
   router.post("/login", async (req, res) => {
     const { email, password } = req.body ?? {};
 
-    if (typeof email !== "string" || !EMAIL_FORMAT.test(email)) {
+    if (typeof email !== "string" || email.length > MAX_EMAIL_LENGTH || !EMAIL_FORMAT.test(email)) {
       throw new ApiError(400, "auth/invalid-email");
     }
 
+    if (typeof password !== "string" || password.length === 0) {
+      throw new ApiError(401, "auth/invalid-credential");
+    }
+
     const limitKey = `${email.toLowerCase()}|${req.ip}`;
-    if (loginLimiter.isBlocked(limitKey)) {
+    if (!loginLimiter.tryAcquire(limitKey)) {
       throw new ApiError(429, "auth/too-many-requests");
     }
 
     const { db } = req.app.locals;
     const user = findUserByEmail(db, email);
     let passwordMatches = false;
-    if (typeof password === "string" && password.length > 0) {
-      if (user) {
-        passwordMatches = await verifyPassword(password, user.password_hash);
-      } else {
-        await burnPasswordCheck(password);
-      }
+    if (user) {
+      passwordMatches = await verifyPassword(password, user.password_hash);
+    } else {
+      await burnPasswordCheck(password);
     }
 
     if (!passwordMatches) {
-      loginLimiter.recordFailure(limitKey);
       throw new ApiError(401, "auth/invalid-credential");
     }
 
