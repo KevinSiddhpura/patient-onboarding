@@ -4,6 +4,8 @@ import express from "express";
 import { ApiError, errorHandler } from "./errors.js";
 import { createLoginLimiter } from "./loginLimiter.js";
 import { createAuthRouter } from "./routes/auth.js";
+import { createConfigRouter } from "./routes/config.js";
+import { createPatientsRouter } from "./routes/patients.js";
 import { createUsersRouter } from "./routes/users.js";
 
 function sha256(value) {
@@ -54,6 +56,8 @@ export function createApp({
   api.use(express.json({ limit: "10kb" }));
   api.use("/auth", createAuthRouter({ loginLimiter }));
   api.use("/users", createUsersRouter());
+  api.use("/patients", createPatientsRouter());
+  api.use("/config", createConfigRouter());
   api.use(() => {
     throw new ApiError(404, "not-found");
   });
