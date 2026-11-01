@@ -1,0 +1,34 @@
+# Replace example.com, APP_PORT and CHANGE_ME_SECRET.
+# APP_PORT is the port the panel assigned to the server.
+
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on; # on Nginx older than 1.25.1, use "listen 443 ssl http2;" instead
+    server_name example.com;
+
+    ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Proxy-Secret CHANGE_ME_SECRET;
+
+    location / {
+        proxy_pass http://127.0.0.1:APP_PORT;
+    }
+
+    location /api/events {
+        proxy_pass http://127.0.0.1:APP_PORT;
+        proxy_buffering off;
+    }
+}

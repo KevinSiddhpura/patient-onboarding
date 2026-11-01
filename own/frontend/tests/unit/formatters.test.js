@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { formatTimestamp } from "../../src/formatters.js";
 
-test("formats a Firestore-style timestamp", () => {
+test("formats a timestamp object", () => {
   const date = new Date("2026-10-03T10:00:00Z");
   assert.equal(formatTimestamp({ toDate: () => date }), date.toLocaleString());
 });
