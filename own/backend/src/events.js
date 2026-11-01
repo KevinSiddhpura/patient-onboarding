@@ -7,7 +7,6 @@ const HEARTBEAT_FRAME = ": ping\n\n";
 
 export function createEventHub({ heartbeatMs = 25000 } = {}) {
   const clients = new Set();
-  let heartbeat = null;
 
   function send(frame) {
     for (const client of clients) {
@@ -15,55 +14,35 @@ export function createEventHub({ heartbeatMs = 25000 } = {}) {
     }
   }
 
-  function stopHeartbeatIfIdle() {
-    if (clients.size === 0 && heartbeat) {
-      clearInterval(heartbeat);
-      heartbeat = null;
+  function closeMatching(matches) {
+    for (const client of clients) {
+      if (matches(client)) {
+        clients.delete(client);
+        client.res.end();
+      }
     }
   }
 
-  function close(client) {
-    clients.delete(client);
-    client.res.end();
-    stopHeartbeatIfIdle();
-  }
+  // Nginx closes a connection after 60 seconds of silence by default.
+  setInterval(() => send(HEARTBEAT_FRAME), heartbeatMs).unref();
 
   return {
     add({ tokenHash, user }, res) {
       const client = { tokenHash, email: user.email, res };
       clients.add(client);
-      res.on("close", () => {
-        clients.delete(client);
-        stopHeartbeatIfIdle();
-      });
-
-      if (!heartbeat) {
-        // Nginx closes a connection after 60 seconds of silence by default.
-        heartbeat = setInterval(() => send(HEARTBEAT_FRAME), heartbeatMs);
-        heartbeat.unref();
-      }
+      res.on("close", () => clients.delete(client));
     },
     broadcastChanged() {
       send(CHANGED_FRAME);
     },
     closeSession(tokenHash) {
-      for (const client of [...clients]) {
-        if (client.tokenHash === tokenHash) {
-          close(client);
-        }
-      }
+      closeMatching((client) => client.tokenHash === tokenHash);
     },
     closeUser(email) {
-      for (const client of [...clients]) {
-        if (client.email === email) {
-          close(client);
-        }
-      }
+      closeMatching((client) => client.email === email);
     },
     closeAll() {
-      for (const client of [...clients]) {
-        close(client);
-      }
+      closeMatching(() => true);
     },
     size() {
       return clients.size;

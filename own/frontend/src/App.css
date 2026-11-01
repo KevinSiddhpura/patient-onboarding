@@ -101,11 +101,6 @@ input {
   gap: 15px;
 }
 
-.form-row {
-  display: flex;
-  gap: 15px;
-}
-
 .form-group {
   flex: 1;
   display: flex;
@@ -311,10 +306,6 @@ button:disabled {
   .user-info {
     width: 100%;
     flex-wrap: wrap;
-  }
-
-  .form-row {
-    flex-direction: column;
   }
 
   .patient-card {

@@ -4,7 +4,7 @@ import { VALID_ROLES } from "./users.js";
 
 export const SESSION_COOKIE = "session";
 
-export function readSessionToken(req) {
+function readSessionToken(req) {
   for (const part of (req.get("cookie") ?? "").split(";")) {
     const [name, value] = part.trim().split("=");
     if (name === SESSION_COOKIE && value) {

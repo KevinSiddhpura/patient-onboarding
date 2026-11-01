@@ -24,7 +24,7 @@ export default function PatientRow({ patient, canEdit, canDelete }) {
     setDeleteError("");
     try {
       await deletePatient(patient.id);
-      // On success the listener removes this row, so there is nothing to reset.
+      // On success the list update removes this row, so there is nothing to reset.
     } catch (error) {
       console.error("Deleting patient failed:", error);
       setDeleteError(describeError(error, "Could not delete the patient. Try again."));

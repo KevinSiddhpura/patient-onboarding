@@ -3,7 +3,6 @@ import { resolve } from "node:path";
 import express from "express";
 import { ApiError, errorHandler } from "./errors.js";
 import { createEventHub, createEventsRouter } from "./events.js";
-import { createLoginLimiter } from "./loginLimiter.js";
 import { createAuthRouter } from "./routes/auth.js";
 import { createConfigRouter } from "./routes/config.js";
 import { createPatientsRouter } from "./routes/patients.js";
@@ -46,8 +45,6 @@ export function createApp({
   production = false,
   proxySecret = null,
   staticDir = null,
-  loginLimiter = createLoginLimiter(),
-  ipLimiter = createLoginLimiter({ max: 100 }),
   events = createEventHub(),
 } = {}) {
   const app = express();
@@ -66,7 +63,7 @@ export function createApp({
   api.use(noStore);
   api.use(requireJsonOnWrites);
   api.use(express.json({ limit: "10kb" }));
-  api.use("/auth", createAuthRouter({ loginLimiter, ipLimiter }));
+  api.use("/auth", createAuthRouter());
   api.use("/users", createUsersRouter());
   api.use("/patients", createPatientsRouter());
   api.use("/config", createConfigRouter());

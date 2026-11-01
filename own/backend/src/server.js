@@ -26,21 +26,22 @@ if (!production) {
 }
 
 const dataDir = resolve(backendRoot, process.env.DATA_DIR || "data");
-const staticDir = resolve(backendRoot, process.env.STATIC_DIR || "../frontend/dist");
+const buildDir = resolve(backendRoot, process.env.STATIC_DIR || "../frontend/dist");
+const staticDir = existsSync(buildDir) ? buildDir : null;
 const port = process.env.PORT || process.env.SERVER_PORT || 3000;
 
 const db = openDb(join(dataDir, "app.db"));
 deleteExpiredSessions(db);
 
-if (!existsSync(staticDir)) {
-  console.warn(`No frontend build at ${staticDir}. Only the API will be served.`);
+if (!staticDir) {
+  console.warn(`No frontend build at ${buildDir}. Only the API will be served.`);
 }
 
 const app = createApp({
   db,
   production,
   proxySecret,
-  staticDir: existsSync(staticDir) ? staticDir : null,
+  staticDir,
 });
 
 const server = app.listen(port, "0.0.0.0", (error) => {

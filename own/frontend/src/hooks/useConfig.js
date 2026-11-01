@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   readShowDeleteButton,
-  refreshRemoteConfig,
-} from "../services/remoteConfig.js";
+  refreshConfig,
+} from "../services/config.js";
 
 // A failed fetch is not fatal: the last activated value (or the default) still applies.
 async function fetchLatest() {
   try {
-    await refreshRemoteConfig();
+    await refreshConfig();
     return "updated";
   } catch (error) {
-    console.error("Remote Config fetch failed:", error);
+    console.error("Config fetch failed:", error);
     return "failed";
   }
 }
 
-export function useRemoteConfig() {
+export function useConfig() {
   const [showDeleteButton, setShowDeleteButton] = useState(false);
   const [status, setStatus] = useState("refreshing");
 

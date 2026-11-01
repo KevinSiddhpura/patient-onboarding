@@ -1,6 +1,6 @@
 import { PATIENT_LIST_LIMIT, ROLES } from "../constants.js";
 import { usePatients } from "../hooks/usePatients.js";
-import { useRemoteConfig } from "../hooks/useRemoteConfig.js";
+import { useConfig } from "../hooks/useConfig.js";
 import { createPatient } from "../services/patients.js";
 import ConfigStatus from "./ConfigStatus.jsx";
 import PatientForm from "./PatientForm.jsx";
@@ -9,7 +9,7 @@ import PatientList from "./PatientList.jsx";
 // Controls shown per role are only a convenience; the server enforces the same permissions.
 export default function PatientsScreen({ role }) {
   const { status, patients, error } = usePatients();
-  const config = useRemoteConfig();
+  const config = useConfig();
 
   const isReceptionist = role === ROLES.RECEPTIONIST;
   const isDoctor = role === ROLES.DOCTOR;

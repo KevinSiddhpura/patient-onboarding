@@ -499,26 +499,26 @@ describe("patients", () => {
 
 describe("config", () => {
   test("readShowDeleteButton is false before any fetch", async () => {
-    const { readShowDeleteButton } = await fresh("remoteConfig");
+    const { readShowDeleteButton } = await fresh("config");
     assert.equal(readShowDeleteButton(), false);
   });
 
-  test("refreshRemoteConfig stores the value", async () => {
-    const { refreshRemoteConfig, readShowDeleteButton } = await fresh("remoteConfig");
+  test("refreshConfig stores the value", async () => {
+    const { refreshConfig, readShowDeleteButton } = await fresh("config");
     routes["GET /api/config"] = () => jsonResponse(200, { show_delete_button: true });
 
-    await refreshRemoteConfig();
+    await refreshConfig();
 
     assert.equal(readShowDeleteButton(), true);
   });
 
   test("a failed refresh rejects and keeps the last value", async () => {
-    const { refreshRemoteConfig, readShowDeleteButton } = await fresh("remoteConfig");
+    const { refreshConfig, readShowDeleteButton } = await fresh("config");
     routes["GET /api/config"] = () => jsonResponse(200, { show_delete_button: true });
-    await refreshRemoteConfig();
+    await refreshConfig();
     delete routes["GET /api/config"];
 
-    await assert.rejects(refreshRemoteConfig(), { code: "unavailable" });
+    await assert.rejects(refreshConfig(), { code: "unavailable" });
 
     assert.equal(readShowDeleteButton(), true);
   });

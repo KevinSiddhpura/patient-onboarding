@@ -1,5 +1,6 @@
 import express from "express";
 import { ApiError } from "../errors.js";
+import { createLoginLimiter } from "../loginLimiter.js";
 import { loadSession, requireSession, SESSION_COOKIE } from "../middleware.js";
 import { burnPasswordCheck, verifyPassword } from "../passwords.js";
 import { createSession, deleteExpiredSessions, deleteSession, SESSION_LIFETIME_MS } from "../sessions.js";
@@ -14,8 +15,10 @@ function cookieOptions(req) {
   };
 }
 
-export function createAuthRouter({ loginLimiter, ipLimiter }) {
+export function createAuthRouter() {
   const router = express.Router();
+  const loginLimiter = createLoginLimiter();
+  const ipLimiter = createLoginLimiter({ max: 100 });
 
   router.post("/login", async (req, res) => {
     const { email, password } = req.body ?? {};

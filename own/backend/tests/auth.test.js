@@ -239,15 +239,14 @@ describe("login limit", () => {
   });
 
   test("one IP trying many emails hits the per-IP limit", async () => {
-    await ctx.close();
-    ctx = await startTestApp({ ipLimiter: createLoginLimiter({ max: 3 }) });
-
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await login(`nobody${attempt}@example.test`, "wrong password");
+    const attempts = Array.from({ length: 100 }, (_, attempt) =>
+      login(`nobody${attempt}@example.test`, "wrong password"),
+    );
+    for (const response of await Promise.all(attempts)) {
       assert.equal(response.status, 401);
     }
 
-    const response = await login("nobody9@example.test", "wrong password");
+    const response = await login("one-more@example.test", "wrong password");
     assert.equal(response.status, 429);
   });
 

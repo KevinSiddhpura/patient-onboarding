@@ -9,7 +9,7 @@ export function usePatients() {
     const unsubscribe = subscribeToPatients(
       (patients) => setState({ status: "ready", patients, error: "" }),
       (error) => {
-        console.error("Patient listener error:", error);
+        console.error("Could not load patients:", error);
         setState({
           status: "error",
           patients: [],

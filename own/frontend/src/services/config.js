@@ -3,7 +3,7 @@ import { apiRequest } from "./api.js";
 
 let showDeleteButton = false;
 
-export async function refreshRemoteConfig() {
+export async function refreshConfig() {
   const config = await apiRequest("/config");
   showDeleteButton = config[SHOW_DELETE_BUTTON_KEY];
 }
