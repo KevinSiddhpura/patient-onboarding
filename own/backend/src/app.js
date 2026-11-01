@@ -2,6 +2,9 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { resolve } from "node:path";
 import express from "express";
 import { ApiError, errorHandler } from "./errors.js";
+import { createLoginLimiter } from "./loginLimiter.js";
+import { createAuthRouter } from "./routes/auth.js";
+import { createUsersRouter } from "./routes/users.js";
 
 function sha256(value) {
   return createHash("sha256").update(value).digest();
@@ -28,7 +31,13 @@ function requireJsonOnWrites(req, res, next) {
   next();
 }
 
-export function createApp({ db, production = false, proxySecret = null, staticDir = null } = {}) {
+export function createApp({
+  db,
+  production = false,
+  proxySecret = null,
+  staticDir = null,
+  loginLimiter = createLoginLimiter(),
+} = {}) {
   const app = express();
   app.disable("x-powered-by");
   app.locals.db = db;
@@ -43,6 +52,8 @@ export function createApp({ db, production = false, proxySecret = null, staticDi
   const api = express.Router();
   api.use(requireJsonOnWrites);
   api.use(express.json({ limit: "10kb" }));
+  api.use("/auth", createAuthRouter({ loginLimiter }));
+  api.use("/users", createUsersRouter());
   api.use(() => {
     throw new ApiError(404, "not-found");
   });
