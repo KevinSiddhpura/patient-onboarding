@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { openDb } from "../src/db.js";
 import { findUserByEmail } from "../src/users.js";
+
+const SERVER = resolve("src/server.js");
 
 let dataDir;
 let children;
@@ -27,8 +29,9 @@ afterEach(async () => {
   rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
 });
 
-function runNode(script, env = {}) {
+function runNode(script, env = {}, cwd = undefined) {
   const child = spawn(process.execPath, [script], {
+    cwd,
     env: { ...process.env, NODE_ENV: "test", DATA_DIR: dataDir, PORT: "", SERVER_PORT: "", ...env },
   });
   children.push(child);
@@ -88,6 +91,55 @@ describe("server", () => {
       headers: { "X-Proxy-Secret": "s3cret" },
     });
     assert.equal(allowed.status, 200);
+  });
+
+  test("reads settings from a .env file in the working directory", async () => {
+    const port = await freePort();
+    writeFileSync(join(dataDir, ".env"), "NODE_ENV=production\nPROXY_SECRET=from-file\n");
+
+    const state = runNode(
+      SERVER,
+      { NODE_ENV: undefined, PROXY_SECRET: undefined, PORT: String(port) },
+      dataDir,
+    );
+    await until(() => state.stdout.includes("Listening") || state.child.exitCode !== null, "the server");
+
+    assert.equal((await fetch(`http://127.0.0.1:${port}/api/auth/me`)).status, 403);
+    const allowed = await fetch(`http://127.0.0.1:${port}/api/auth/me`, {
+      headers: { "X-Proxy-Secret": "from-file" },
+    });
+    assert.equal(allowed.status, 200);
+  });
+
+  test("a .env file that turns on production without a secret stops the server", async () => {
+    writeFileSync(join(dataDir, ".env"), "NODE_ENV=production\n");
+
+    const state = runNode(SERVER, { NODE_ENV: undefined, PROXY_SECRET: undefined }, dataDir);
+
+    assert.equal(await state.exited, 1);
+  });
+
+  test("warns when it is not running in production mode", async () => {
+    const state = await startServer();
+    assert.match(state.stderr, /not production/i);
+  });
+
+  test("does not warn in production mode", async () => {
+    const state = await startServer({ NODE_ENV: "production", PROXY_SECRET: "s3cret" });
+    assert.doesNotMatch(state.stderr, /not production/i);
+  });
+
+  test("a port already in use reports EADDRINUSE", async () => {
+    const blocker = createServer();
+    await new Promise((resolve) => blocker.listen(0, "0.0.0.0", resolve));
+    try {
+      const state = runNode(SERVER, { PORT: String(blocker.address().port) });
+
+      assert.notEqual(await state.exited, 0);
+      assert.match(state.stderr, /EADDRINUSE/);
+    } finally {
+      await new Promise((resolve) => blocker.close(resolve));
+    }
   });
 
   test("uses PORT ahead of SERVER_PORT", async () => {

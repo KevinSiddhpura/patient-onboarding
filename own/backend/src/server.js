@@ -7,6 +7,11 @@ import { runCommand } from "./commands.js";
 import { openDb } from "./db.js";
 import { deleteExpiredSessions } from "./sessions.js";
 
+// A panel egg may only offer its own variables, so settings can also come from a file.
+if (existsSync(".env")) {
+  process.loadEnvFile(".env");
+}
+
 const backendRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const production = process.env.NODE_ENV === "production";
 const proxySecret = process.env.PROXY_SECRET || null;
@@ -14,6 +19,10 @@ const proxySecret = process.env.PROXY_SECRET || null;
 if (production && !proxySecret) {
   console.error("PROXY_SECRET must be set in production.");
   process.exit(1);
+}
+
+if (!production) {
+  console.warn("NODE_ENV is not production: cookies are not Secure. Fine locally, not on a live site.");
 }
 
 const dataDir = resolve(backendRoot, process.env.DATA_DIR || "data");
@@ -34,7 +43,10 @@ const app = createApp({
   staticDir: existsSync(staticDir) ? staticDir : null,
 });
 
-const server = app.listen(port, "0.0.0.0", () => {
+const server = app.listen(port, "0.0.0.0", (error) => {
+  if (error) {
+    throw error;
+  }
   console.log(`Listening on port ${server.address().port}`);
 });
 
