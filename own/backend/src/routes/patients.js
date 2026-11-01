@@ -41,7 +41,7 @@ export function createPatientsRouter() {
       )
       .run(id, name, phone, condition, now, now);
 
-    req.app.locals.events.broadcastChanged();
+    req.app.locals.events.broadcastChanged(req.get("x-client-id"));
     res.status(201).json({ id });
   });
 
@@ -59,7 +59,7 @@ export function createPatientsRouter() {
       throw new ApiError(404, "not-found");
     }
 
-    req.app.locals.events.broadcastChanged();
+    req.app.locals.events.broadcastChanged(req.get("x-client-id"));
     res.json({ id: req.params.id });
   });
 
@@ -69,7 +69,7 @@ export function createPatientsRouter() {
       .run(req.params.id);
 
     if (changes > 0) {
-      req.app.locals.events.broadcastChanged();
+      req.app.locals.events.broadcastChanged(req.get("x-client-id"));
     }
     res.status(204).end();
   });

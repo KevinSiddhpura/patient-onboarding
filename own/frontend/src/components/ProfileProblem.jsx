@@ -1,5 +1,5 @@
 import { AUTH_STATUS } from "../constants.js";
-import { logOut } from "../services/auth.js";
+import { useLogout } from "../hooks/useLogout.js";
 
 const EXPLANATIONS = {
   [AUTH_STATUS.PROFILE_MISSING]:
@@ -11,12 +11,15 @@ const EXPLANATIONS = {
 };
 
 export default function ProfileProblem({ status, email, onRetry }) {
+  const { logOut, error } = useLogout();
+
   return (
     <main className="container">
       <section className="card login-card">
         <h1>Access unavailable</h1>
         <p>Signed in as {email}.</p>
         <p className="message message-error" role="alert">{EXPLANATIONS[status]}</p>
+        {error && <p className="message message-error" role="alert">{error}</p>}
 
         <div className="button-row">
           {status === AUTH_STATUS.PROFILE_ERROR && (

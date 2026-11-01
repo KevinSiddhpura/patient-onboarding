@@ -1,6 +1,6 @@
 # Patient Onboarding (without Firebase)
 
-The same clinic app as `for-mickey`, but with my own backend instead of Firebase. A receptionist registers patients and a doctor reviews, edits and deletes them. The screens are the same; only what's behind them changed.
+The same clinic app as `for-mickey`, but with my own backend instead of Firebase. A receptionist registers patients and a doctor reviews, edits and deletes them. The screens are almost the same; mainly what's behind them changed.
 
 ## How it works
 
@@ -10,7 +10,7 @@ One Node server does everything: it serves the React build, the JSON API and the
 - **SQLite** (`better-sqlite3`) stores the data in one file.
 - **Login** uses email and password. Passwords are hashed with Node's `scrypt`, and the session is kept in an `HttpOnly` cookie.
 - **Role checks** run on the server for every request, so hiding a button in the UI is only a convenience.
-- **Live updates** use Server-Sent Events. After a write the server sends a "changed" signal and the browser fetches the list again.
+- **Live updates** use Server-Sent Events. After a write the server sends a "changed" signal to the other tabs and they fetch the list again. The tab that made the change fetches it directly.
 - **The delete flag** (`show_delete_button`) is a row in the database, changed from the panel console.
 
 ```mermaid
@@ -64,7 +64,7 @@ The delete flag only hides the button, same as the Firebase version. A doctor ca
 - `backend/src/server.js` starts everything and reads console commands.
 - `backend/src/app.js` puts the Express app together, and `backend/src/routes/` has the routes.
 - `backend/src/commands.js` has the console commands.
-- `frontend/src/services/` is the only frontend code that changed, apart from the header text. It keeps the same function names, now using `fetch`.
+- `frontend/src/services/` is where most of the frontend change is. It keeps the same function names, now using `fetch`. The screens are the same apart from the header text, a "Server unavailable" screen when the session can't be checked, and a message when logout fails.
 
 ## Running it locally
 

@@ -10,12 +10,12 @@ function errorWithCode(code) {
   return error;
 }
 
-export async function apiRequest(path, { method = "GET", body } = {}) {
+export async function apiRequest(path, { method = "GET", body, headers = {} } = {}) {
   let response;
   try {
     response = await fetch(`/api${path}`, {
       method,
-      headers: method === "GET" ? {} : { "Content-Type": "application/json" },
+      headers: method === "GET" ? headers : { "Content-Type": "application/json", ...headers },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {

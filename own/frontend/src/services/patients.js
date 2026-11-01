@@ -2,6 +2,10 @@ import { apiRequest } from "./api.js";
 
 const RECONNECT_DELAY_MS = 5000;
 
+// Identifies this tab, so the server doesn't send it events for its own writes.
+const clientId = crypto.randomUUID();
+const CLIENT_HEADERS = { "X-Client-Id": clientId };
+
 let activeSubscription = null;
 
 // formatTimestamp expects objects with toDate().
@@ -44,7 +48,7 @@ async function loadPatients(subscription) {
 }
 
 function openEvents(subscription) {
-  const source = new EventSource("/api/events");
+  const source = new EventSource(`/api/events?client=${clientId}`);
   subscription.source = source;
 
   source.addEventListener("changed", () => loadPatients(subscription));
@@ -54,6 +58,8 @@ function openEvents(subscription) {
     if (source.readyState === EventSource.CLOSED) {
       loadPatients(subscription);
       subscription.reconnectTimer = setTimeout(() => openEvents(subscription), RECONNECT_DELAY_MS);
+    } else if (!subscription.loaded) {
+      loadPatients(subscription);
     }
   });
 }
@@ -61,6 +67,7 @@ function openEvents(subscription) {
 export async function createPatient({ name, phone, condition }) {
   const { id } = await apiRequest("/patients", {
     method: "POST",
+    headers: CLIENT_HEADERS,
     body: { name, phone, condition },
   });
   if (activeSubscription) {
@@ -72,6 +79,7 @@ export async function createPatient({ name, phone, condition }) {
 export async function updatePatient(patientId, { name, phone, condition }) {
   await apiRequest(`/patients/${encodeURIComponent(patientId)}`, {
     method: "PUT",
+    headers: CLIENT_HEADERS,
     body: { name, phone, condition },
   });
   if (activeSubscription) {
@@ -80,7 +88,7 @@ export async function updatePatient(patientId, { name, phone, condition }) {
 }
 
 export async function deletePatient(patientId) {
-  await apiRequest(`/patients/${encodeURIComponent(patientId)}`, { method: "DELETE" });
+  await apiRequest(`/patients/${encodeURIComponent(patientId)}`, { method: "DELETE", headers: CLIENT_HEADERS });
   if (activeSubscription) {
     // PatientRow stays on "Deleting…" until its row goes, so don't depend on the refresh working.
     activeSubscription.patients = activeSubscription.patients.filter((patient) => patient.id !== patientId);
@@ -102,7 +110,7 @@ export function subscribeToPatients(onChange, onError) {
   };
   activeSubscription = subscription;
 
-  loadPatients(subscription);
+  // The first load happens once the stream is open, so no change can fall between the two.
   openEvents(subscription);
 
   return () => {

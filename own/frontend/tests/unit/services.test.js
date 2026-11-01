@@ -148,14 +148,40 @@ describe("auth", () => {
     assert.deepEqual(seen, [null]);
   });
 
-  test("a network failure on /auth/me counts as signed out", async () => {
+  test("a network failure on /auth/me reports an error instead of signing out", async () => {
     const { watchAuthState } = await fresh("auth");
     const seen = [];
+    const errors = [];
 
-    watchAuthState((user) => seen.push(user));
+    watchAuthState((user) => seen.push(user), (error) => errors.push(error));
     await settle();
 
-    assert.deepEqual(seen, [null]);
+    assert.deepEqual(seen, []);
+    assert.equal(errors[0].code, "unavailable");
+  });
+
+  test("a server error on /auth/me reports an error instead of signing out", async () => {
+    const { watchAuthState } = await fresh("auth");
+    routes["GET /api/auth/me"] = () => errorResponse(500, "internal");
+    const seen = [];
+    const errors = [];
+
+    watchAuthState((user) => seen.push(user), (error) => errors.push(error));
+    await settle();
+
+    assert.deepEqual(seen, []);
+    assert.equal(errors[0].code, "internal");
+  });
+
+  test("no error callback after unsubscribing", async () => {
+    const { watchAuthState } = await fresh("auth");
+    const errors = [];
+
+    const unsubscribe = watchAuthState(() => {}, (error) => errors.push(error));
+    unsubscribe();
+    await settle();
+
+    assert.deepEqual(errors, []);
   });
 
   test("no callback after unsubscribing while /auth/me is pending", async () => {
@@ -254,11 +280,10 @@ describe("auth", () => {
     assert.deepEqual(seen.at(-1), null);
   });
 
-  test("logOut on a network failure resolves and stays signed in", async (t) => {
-    t.mock.method(console, "error", () => {});
+  test("logOut on a network failure rejects and stays signed in", async () => {
     const { logOut, seen, currentUserId } = await signedIn();
 
-    await logOut();
+    await assert.rejects(logOut(), { code: "unavailable" });
 
     assert.deepEqual(seen, [USER]);
     assert.equal(currentUserId(), "u1");
@@ -288,6 +313,7 @@ describe("patients", () => {
       (list) => delivered.push(list),
       (error) => errors.push(error),
     );
+    eventSources[0].emit("open");
     await settle();
     return { ...patients, delivered, errors, unsubscribe, source: eventSources[0] };
   }
@@ -304,7 +330,72 @@ describe("patients", () => {
   test("subscribe delivers the list and opens /api/events", async () => {
     const { delivered, source } = await subscribed();
     assert.equal(delivered.length, 1);
-    assert.equal(source.url, "/api/events");
+    assert.match(source.url, /^\/api\/events\?client=.+/);
+  });
+
+  test("mounting fetches the list once, after the stream is open", async () => {
+    const { subscribeToPatients } = await fresh("patients");
+    routes[LIST] = () => jsonResponse(200, [ROW]);
+
+    subscribeToPatients(() => {}, () => {});
+    await settle();
+    assert.equal(countOf(LIST), 0);
+
+    eventSources[0].emit("open");
+    await settle();
+    assert.equal(countOf(LIST), 1);
+  });
+
+  test("the list still loads if the stream fails before it opens", async () => {
+    const { subscribeToPatients } = await fresh("patients");
+    routes[LIST] = () => jsonResponse(200, [ROW]);
+    const delivered = [];
+
+    subscribeToPatients((list) => delivered.push(list), () => {});
+    eventSources[0].readyState = 0;
+    eventSources[0].emit("error");
+    await settle();
+
+    assert.equal(delivered.length, 1);
+  });
+
+  test("a stream error while it retries does not fetch again once the list is loaded", async () => {
+    const { source } = await subscribed();
+    const before = countOf(LIST);
+
+    source.readyState = 0;
+    source.emit("error");
+    await settle();
+
+    assert.equal(countOf(LIST), before);
+  });
+
+  test("writes send the same client id as the stream", async () => {
+    const { createPatient, updatePatient, deletePatient, source } = await subscribed();
+    routes["POST /api/patients"] = () => jsonResponse(201, { id: "p2" });
+    routes["PUT /api/patients/p1"] = () => jsonResponse(200, { id: "p1" });
+    routes["DELETE /api/patients/p1"] = () => jsonResponse(204);
+    const clientId = source.url.split("client=")[1];
+
+    await createPatient({ name: "B", phone: "2", condition: "C" });
+    await updatePatient("p1", { name: "A", phone: "1", condition: "C" });
+    await deletePatient("p1");
+
+    for (const key of ["POST /api/patients", "PUT /api/patients/p1", "DELETE /api/patients/p1"]) {
+      const request = requests.find((entry) => entry.key === key);
+      assert.equal(request.options.headers["X-Client-Id"], clientId);
+    }
+  });
+
+  test("a write fetches the list once", async () => {
+    const { createPatient } = await subscribed();
+    routes["POST /api/patients"] = () => jsonResponse(201, { id: "p2" });
+    const before = countOf(LIST);
+
+    await createPatient({ name: "B", phone: "2", condition: "C" });
+    await settle();
+
+    assert.equal(countOf(LIST), before + 1);
   });
 
   test("a changed event fetches the list again", async () => {
@@ -352,6 +443,7 @@ describe("patients", () => {
     const errors = [];
 
     subscribeToPatients(() => {}, (error) => errors.push(error));
+    eventSources[0].emit("open");
     await settle();
 
     assert.equal(errors[0].code, "unavailable");

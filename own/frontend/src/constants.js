@@ -18,6 +18,7 @@ export const AUTH_STATUS = {
   PROFILE_MISSING: "profileMissing",
   ROLE_UNKNOWN: "roleUnknown",
   PROFILE_ERROR: "profileError",
+  SERVER_ERROR: "serverError",
   READY: "ready",
 };
 

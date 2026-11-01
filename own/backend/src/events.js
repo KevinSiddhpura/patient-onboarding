@@ -8,12 +8,6 @@ const HEARTBEAT_FRAME = ": ping\n\n";
 export function createEventHub({ heartbeatMs = 25000 } = {}) {
   const clients = new Set();
 
-  function send(frame) {
-    for (const client of clients) {
-      client.res.write(frame);
-    }
-  }
-
   function closeMatching(matches) {
     for (const client of clients) {
       if (matches(client)) {
@@ -24,16 +18,25 @@ export function createEventHub({ heartbeatMs = 25000 } = {}) {
   }
 
   // Nginx closes a connection after 60 seconds of silence by default.
-  setInterval(() => send(HEARTBEAT_FRAME), heartbeatMs).unref();
+  setInterval(() => {
+    for (const client of clients) {
+      client.res.write(HEARTBEAT_FRAME);
+    }
+  }, heartbeatMs).unref();
 
   return {
-    add({ tokenHash, user }, res) {
-      const client = { tokenHash, email: user.email, res };
+    add({ tokenHash, user }, clientId, res) {
+      const client = { tokenHash, email: user.email, clientId, res };
       clients.add(client);
       res.on("close", () => clients.delete(client));
     },
-    broadcastChanged() {
-      send(CHANGED_FRAME);
+    // The tab that made the change has already fetched the list itself.
+    broadcastChanged(writerClientId) {
+      for (const client of clients) {
+        if (!writerClientId || client.clientId !== writerClientId) {
+          client.res.write(CHANGED_FRAME);
+        }
+      }
     },
     closeSession(tokenHash) {
       closeMatching((client) => client.tokenHash === tokenHash);
@@ -60,7 +63,7 @@ export function createEventsRouter() {
       "X-Accel-Buffering": "no",
     });
     res.flushHeaders();
-    req.app.locals.events.add(req.session, res);
+    req.app.locals.events.add(req.session, req.query.client, res);
   });
 
   return router;

@@ -11,7 +11,7 @@ export function useAuthProfile() {
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
-    const unsubscribe = watchAuthState(async (user) => {
+    const handleUser = async (user) => {
       if (!user) {
         setState({ status: AUTH_STATUS.SIGNED_OUT, user: null, profile: null });
         return;
@@ -32,9 +32,14 @@ export function useAuthProfile() {
       if (currentUserId() === user.uid) {
         setState(nextState);
       }
-    });
+    };
 
-    return unsubscribe;
+    const handleError = (error) => {
+      console.error("Failed to check the session:", error);
+      setState({ status: AUTH_STATUS.SERVER_ERROR, user: null, profile: null });
+    };
+
+    return watchAuthState(handleUser, handleError);
   }, [attempt]);
 
   const retry = () => {

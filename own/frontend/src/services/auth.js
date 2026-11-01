@@ -25,26 +25,30 @@ export async function logOut() {
     await apiRequest("/auth/logout", { method: "POST" });
     setUser(null);
   } catch (error) {
-    // The cookie can only be cleared by the server, so a failed logout means still signed in.
+    // A 401 means the session is already gone. Otherwise only the server can clear the cookie.
     if (error.code !== "unauthenticated") {
-      console.error("Logout failed:", error);
+      throw error;
     }
   }
 }
 
-export function watchAuthState(callback) {
+export function watchAuthState(callback, onError) {
   let active = true;
   watchers.add(callback);
 
-  apiRequest("/auth/me")
-    .then(({ user }) => user)
-    .catch(() => null)
-    .then((user) => {
+  apiRequest("/auth/me").then(
+    ({ user }) => {
       if (active) {
         currentUser = user;
         callback(user);
       }
-    });
+    },
+    (error) => {
+      if (active) {
+        onError(error);
+      }
+    },
+  );
 
   return () => {
     active = false;

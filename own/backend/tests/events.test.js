@@ -34,9 +34,9 @@ async function until(check, label) {
   assert.fail(`Timed out waiting for ${label}`);
 }
 
-async function openStream(cookie, target = ctx) {
+async function openStream(cookie, target = ctx, clientId = "") {
   const controller = new AbortController();
-  const response = await fetch(`${target.baseUrl}/api/events`, {
+  const response = await fetch(`${target.baseUrl}/api/events?client=${clientId}`, {
     headers: { Cookie: cookie },
     signal: controller.signal,
   });
@@ -106,6 +106,24 @@ describe("stream", () => {
 
     await api(ctx.baseUrl, `/api/patients/${json.id}`, { method: "DELETE", cookie: doctor });
     await until(() => changedCount(stream) === 3, "delete event");
+  });
+
+  test("the tab that made the change gets no event, other tabs do", async () => {
+    const writer = await openStream(receptionist, ctx, "writer-tab");
+    const sameUserOtherTab = await openStream(receptionist, ctx, "other-tab");
+    const otherUser = await openStream(doctor, ctx, "doctor-tab");
+
+    await api(ctx.baseUrl, "/api/patients", {
+      method: "POST",
+      body: PATIENT,
+      cookie: receptionist,
+      headers: { "X-Client-Id": "writer-tab" },
+    });
+
+    await until(() => changedCount(sameUserOtherTab) === 1, "the other tab's event");
+    await until(() => changedCount(otherUser) === 1, "the other user's event");
+    await delay(50);
+    assert.equal(changedCount(writer), 0);
   });
 
   test("a failed write sends nothing", async () => {

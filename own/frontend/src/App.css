@@ -259,6 +259,11 @@ button:disabled {
   border-left-color: #dc3545;
 }
 
+.header-error {
+  margin: 0;
+  border-radius: 0;
+}
+
 .field-error {
   color: #b92c3a;
   font-size: 13px;
