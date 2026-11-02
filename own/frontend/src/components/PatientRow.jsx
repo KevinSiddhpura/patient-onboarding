@@ -4,7 +4,7 @@ import { formatTimestamp } from "../formatters.js";
 import { deletePatient, updatePatient } from "../services/patients.js";
 import PatientForm from "./PatientForm.jsx";
 
-export default function PatientRow({ patient, canEdit, canDelete }) {
+export default function PatientRow({ patient, canEdit, canDelete, onDeleteDisabled }) {
   const [mode, setMode] = useState("view"); // "view" | "editing" | "confirmingDelete"
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -29,6 +29,11 @@ export default function PatientRow({ patient, canEdit, canDelete }) {
       console.error("Deleting patient failed:", error);
       setDeleteError(describeError(error, "Could not delete the patient. Try again."));
       setDeleting(false);
+      // This page had an old flag value, so fetch it again to hide the button.
+      if (error.code === "delete-disabled") {
+        setMode("view");
+        onDeleteDisabled();
+      }
     }
   };
 

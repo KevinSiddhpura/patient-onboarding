@@ -65,6 +65,7 @@ describe("roles", () => {
   });
 
   test("doctor can list, edit and delete", async () => {
+    setFlag(ctx.db, true);
     assert.equal((await list(doctor)).status, 200);
     assert.equal((await update(doctor)).status, 200);
     assert.equal((await remove(doctor)).status, 204);
@@ -191,6 +192,7 @@ describe("other behaviour", () => {
   });
 
   test("DELETE on a missing patient returns 204", async () => {
+    setFlag(ctx.db, true);
     assert.equal((await remove(doctor, "missing")).status, 204);
   });
 
@@ -204,10 +206,25 @@ describe("other behaviour", () => {
     assertDenied(await config(), 401, "unauthenticated");
   });
 
-  test("flag off does not block a doctor's direct DELETE", async () => {
+  test("flag off blocks a doctor's DELETE and keeps the patient", async () => {
     setFlag(ctx.db, false);
-    assert.equal((await remove(doctor)).status, 204);
+    assertDenied(await remove(doctor), 403, "delete-disabled");
     const { json } = await list(doctor);
-    assert.equal(json.some((patient) => patient.id === EXISTING), false);
+    assert.equal(json.some((patient) => patient.id === EXISTING), true);
+  });
+
+  test("DELETE reads the flag on every request", async () => {
+    insertPatient("second-patient", OLD_TIME);
+    setFlag(ctx.db, true);
+    assert.equal((await remove(doctor)).status, 204);
+    setFlag(ctx.db, false);
+    assertDenied(await remove(doctor, "second-patient"), 403, "delete-disabled");
+    setFlag(ctx.db, true);
+    assert.equal((await remove(doctor, "second-patient")).status, 204);
+  });
+
+  test("flag on does not let a receptionist delete", async () => {
+    setFlag(ctx.db, true);
+    assertDenied(await remove(receptionist), 403, "permission-denied");
   });
 });

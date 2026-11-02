@@ -5,8 +5,8 @@ import { isPasswordHash } from "./services/passwords.js";
 import { insertUser, isValidEmail, listUsers, removeUser, VALID_ROLES } from "./services/users.js";
 
 const HELP = `Commands:
-  flag                                          show the delete button flag
-  flag on | flag off                            set the delete button flag
+  flag                                          show the delete flag
+  flag on | flag off                            allow or block deleting patients
   user add <email> <role> <hash> <name...>      add a user (make the line with npm run user:hash)
   user remove <email>                           remove a user and their sessions
   user list                                     list users

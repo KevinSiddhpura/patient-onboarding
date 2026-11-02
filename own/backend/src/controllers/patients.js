@@ -1,3 +1,4 @@
+import { getFlag } from "../services/config.js";
 import * as patients from "../services/patients.js";
 import { ApiError } from "../utils/ApiError.js";
 import { parsePatient } from "../validators/patient.js";
@@ -26,6 +27,9 @@ export function updatePatient(req, res) {
 }
 
 export function deletePatient(req, res) {
+  if (!getFlag(req.app.locals.db)) {
+    throw new ApiError(403, "delete-disabled");
+  }
   if (patients.deletePatient(req.app.locals.db, req.params.id)) {
     broadcastChanged(req);
   }

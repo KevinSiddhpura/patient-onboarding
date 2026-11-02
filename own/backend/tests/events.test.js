@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, describe, test } from "node:test";
+import { setFlag } from "../src/services/config.js";
 import { createEventHub } from "../src/services/events.js";
 import { api, signIn, startTestApp } from "./helpers.js";
 
@@ -15,6 +16,7 @@ beforeEach(async () => {
   ctx = await startTestApp();
   doctor = (await signIn(ctx, { role: "doctor" })).cookie;
   receptionist = (await signIn(ctx, { role: "receptionist" })).cookie;
+  setFlag(ctx.db, true);
 });
 
 afterEach(async () => {

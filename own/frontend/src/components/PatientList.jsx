@@ -1,6 +1,6 @@
 import PatientRow from "./PatientRow.jsx";
 
-export default function PatientList({ status, patients, error, canEdit, canDelete }) {
+export default function PatientList({ status, patients, error, canEdit, canDelete, onDeleteDisabled }) {
   if (status === "loading") {
     return <p>Loading patients…</p>;
   }
@@ -19,6 +19,7 @@ export default function PatientList({ status, patients, error, canEdit, canDelet
           patient={patient}
           canEdit={canEdit}
           canDelete={canDelete}
+          onDeleteDisabled={onDeleteDisabled}
         />
       ))}
     </div>

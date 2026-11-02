@@ -54,6 +54,7 @@ export default function PatientsScreen({ role }) {
           error={error}
           canEdit={isDoctor}
           canDelete={isDoctor && config.showDeleteButton}
+          onDeleteDisabled={config.refresh}
         />
       </section>
     </main>

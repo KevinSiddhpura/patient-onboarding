@@ -68,7 +68,7 @@ Claude Code was used to make the process faster. The design of the project, the 
 1. A user signs in with an email and password. There's no sign-up screen, because accounts are added from the console.
 2. The receptionist sees a registration form and the patient list.
 3. The doctor sees the same list without the form, and can edit a patient's name, phone and condition.
-4. The doctor sees a Delete button only when the delete flag is on. It's switched from the console, and "Refresh config" picks it up without a redeploy.
+4. The doctor can delete a patient only when the delete flag is on. It's switched from the console, and "Refresh config" shows or hides the button without a redeploy. If a page still shows the button after the flag goes off, the server refuses the delete and the page hides the button.
 5. Logging out returns to the login page.
 
 The list shows the 50 most recent patients.
@@ -78,9 +78,9 @@ The list shows the 50 most recent patients.
 | Create patient | Allowed | Denied | Denied |
 | Read patient list | Allowed | Allowed | Denied |
 | Edit patient | Denied | Allowed | Denied |
-| Delete patient | Denied | Allowed | Denied |
+| Delete patient | Denied | Allowed while the delete flag is on | Denied |
 
-The server checks these on every request, so hiding a button is only a convenience. The delete flag only hides the button, same as in the Firebase version. A doctor can still delete through the API when it's off.
+The server checks these on every request, so hiding a button is only a convenience. Each delete also reads the flag from the database, so a doctor can't delete through an old page or the API when it's off.
 
 ## How it works
 
@@ -160,7 +160,7 @@ Both apps do the same job for the user. The difference is who runs the backend.
 | **Login limit** | Handled by Firebase | None |
 | **Permissions** | Security Rules | Express middleware and validation |
 | **Live updates** | `onSnapshot` delivers the new data | A signal tells the tab to fetch the list again |
-| **Delete flag** | Remote Config, cached for up to 12 hours by default in production | A database row, read on each "Refresh config" |
+| **Delete flag** | Remote Config for the button, cached for up to 12 hours by default in production, plus a Firestore switch the rules check on each delete | One database row, read on each "Refresh config" and each delete |
 | **Adding a user** | Create the account in the console, then a `/users/<UID>` document by hand | Paste one `user add` line into the panel console |
 | **Backups** | No backup step set up | `backup` console command |
 | **Running locally** | Node, plus Java for the emulators | Only Node |
@@ -209,7 +209,7 @@ Type these in the panel console, or in the terminal running the backend.
 
 | Command | What it does |
 | --- | --- |
-| `flag`, `flag on`, `flag off` | Show or set the delete button flag |
+| `flag`, `flag on`, `flag off` | Show the delete flag, or allow or block deleting patients |
 | `user add <email> <role> <hash> <name>` | Add a user |
 | `user remove <email>` | Remove a user and their sessions |
 | `user list` | List users |
