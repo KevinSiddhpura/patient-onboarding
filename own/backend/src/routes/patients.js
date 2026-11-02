@@ -1,78 +1,14 @@
-import { randomUUID } from "node:crypto";
 import express from "express";
-import { ApiError } from "../errors.js";
-import { requireRole, requireSession, requireStaff } from "../middleware.js";
-import { parsePatient } from "../validation.js";
+import { createPatient, deletePatient, listPatients, updatePatient } from "../controllers/patients.js";
+import { requireRole, requireSession, requireStaff } from "../middlewares/auth.js";
 
-const PATIENT_LIST_LIMIT = 50;
+const router = express.Router();
 
-function toJson(row) {
-  return {
-    id: row.patient_id,
-    patientId: row.patient_id,
-    name: row.name,
-    phone: row.phone,
-    condition: row.condition,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
+router.use(requireSession);
 
-export function createPatientsRouter() {
-  const router = express.Router();
-  router.use(requireSession);
+router.get("/", requireStaff, listPatients);
+router.post("/", requireRole("receptionist"), createPatient);
+router.put("/:id", requireRole("doctor"), updatePatient);
+router.delete("/:id", requireRole("doctor"), deletePatient);
 
-  router.get("/", requireStaff, (req, res) => {
-    const rows = req.app.locals.db
-      .prepare("SELECT * FROM patients ORDER BY created_at DESC, rowid DESC LIMIT ?")
-      .all(PATIENT_LIST_LIMIT);
-    res.json(rows.map(toJson));
-  });
-
-  router.post("/", requireRole("receptionist"), (req, res) => {
-    const { name, phone, condition } = parsePatient(req.body);
-    const id = randomUUID();
-    const now = new Date().toISOString();
-
-    req.app.locals.db
-      .prepare(
-        `INSERT INTO patients (patient_id, name, phone, condition, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      )
-      .run(id, name, phone, condition, now, now);
-
-    req.app.locals.events.broadcastChanged(req.get("x-client-id"));
-    res.status(201).json({ id });
-  });
-
-  router.put("/:id", requireRole("doctor"), (req, res) => {
-    const { name, phone, condition } = parsePatient(req.body);
-
-    const { changes } = req.app.locals.db
-      .prepare(
-        `UPDATE patients SET name = ?, phone = ?, condition = ?, updated_at = ?
-         WHERE patient_id = ?`,
-      )
-      .run(name, phone, condition, new Date().toISOString(), req.params.id);
-
-    if (changes === 0) {
-      throw new ApiError(404, "not-found");
-    }
-
-    req.app.locals.events.broadcastChanged(req.get("x-client-id"));
-    res.json({ id: req.params.id });
-  });
-
-  router.delete("/:id", requireRole("doctor"), (req, res) => {
-    const { changes } = req.app.locals.db
-      .prepare("DELETE FROM patients WHERE patient_id = ?")
-      .run(req.params.id);
-
-    if (changes > 0) {
-      req.app.locals.events.broadcastChanged(req.get("x-client-id"));
-    }
-    res.status(204).end();
-  });
-
-  return router;
-}
+export default router;

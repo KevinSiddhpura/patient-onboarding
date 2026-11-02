@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { verifyPassword } from "./passwords.js";
 
 export const VALID_ROLES = ["receptionist", "doctor"];
 
@@ -28,4 +29,12 @@ export function findUserByEmail(db, email) {
 
 export function listUsers(db) {
   return db.prepare("SELECT email, name, role FROM users ORDER BY email").all();
+}
+
+export async function checkLogin(db, email, password) {
+  const user = findUserByEmail(db, email);
+  if (user && (await verifyPassword(password, user.password_hash))) {
+    return user;
+  }
+  return null;
 }

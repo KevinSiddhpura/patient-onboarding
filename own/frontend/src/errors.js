@@ -3,7 +3,6 @@ const DEFAULT_MESSAGE = "Something went wrong. Please try again.";
 const MESSAGES_BY_CODE = {
   "auth/invalid-credential": "Incorrect email or password.",
   "auth/invalid-email": "Enter a valid email address.",
-  "auth/too-many-requests": "Too many attempts. Wait a moment and try again.",
   "not-found": "This patient no longer exists.",
   "permission-denied": "You do not have permission to do that.",
   "unauthenticated": "Your session has expired. Please log in again.",

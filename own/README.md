@@ -1,6 +1,17 @@
 # Patient Onboarding (without Firebase)
 
-The same clinic app as `for-mickey`, but with my own backend instead of Firebase. A receptionist registers patients and a doctor reviews, edits and deletes them. The screens are almost the same; mainly what's behind them changed.
+A small patient management app for a clinic. A receptionist registers patients, and a doctor reviews, edits and deletes them. Both see the same patient list, and it updates live without a reload.
+
+It's a rebuild of `for-mickey` with my own backend instead of Firebase. The screens are almost the same; mainly what's behind them changed. See [Compared to for-mickey](#compared-to-for-mickey) for the differences.
+
+## What it does
+
+1. A user signs in with their clinic email and password. There's no sign-up screen, because I add each account from the console.
+2. The server looks up the account's role. If the role is missing or not valid, the app shows a problem screen instead of the patient list.
+3. The receptionist sees the registration form and the patient list.
+4. The doctor sees the same list without the form, and can edit a patient's name, phone and condition. The list shows the 50 most recent patients.
+5. The doctor sees a Delete button only when the `show_delete_button` flag is on. I change the flag from the console, and pressing "Refresh config" in the app picks it up without a redeploy.
+6. Logging out returns to the login page.
 
 ## How it works
 
@@ -21,7 +32,7 @@ flowchart LR
     DB[("SQLite file")]
     Console["Panel console"]
     User -->|"HTTPS"| Nginx
-    Nginx -->|"HTTP + secret header"| Server
+    Nginx -->|"HTTP"| Server
     Server --> DB
     Console -->|"admin commands"| Server
 ```
@@ -30,11 +41,11 @@ flowchart LR
 
 | Firebase | Here |
 | --- | --- |
-| Authentication | `routes/auth.js`, `passwords.js`, `sessions.js` |
-| Firestore | SQLite, `db.js` |
-| Security Rules | `middleware.js`, `validation.js` |
-| `onSnapshot` | `events.js`, plus `EventSource` in the frontend |
-| Remote Config | `config` table, `routes/config.js` |
+| Authentication | `controllers/auth.js`, `services/passwords.js`, `services/sessions.js` |
+| Firestore | SQLite, `config/db.js` |
+| Security Rules | `middlewares/auth.js`, `validators/patient.js` |
+| `onSnapshot` | `services/events.js`, plus `EventSource` in the frontend |
+| Remote Config | `config` table, `services/config.js` |
 | Firebase console | Commands typed into the server's console |
 | Hosting | Express serves the build, Nginx handles HTTPS |
 
@@ -44,7 +55,7 @@ flowchart LR
 
 `patients` has `patient_id`, `name`, `phone`, `condition`, `created_at` and `updated_at`. Text must be trimmed and non-empty, with limits of 100, 20 and 500 characters. The server sets the ID and timestamps, and rejects any other fields.
 
-`sessions` stores a SHA-256 hash of each login token, so a copy of the database can't be used to log in. Sessions last 7 days.
+`sessions` stores each login token and when it expires. Sessions last 7 days.
 
 `config` holds the delete flag.
 
@@ -61,10 +72,52 @@ The delete flag only hides the button, same as the Firebase version. A doctor ca
 
 ### Code layout
 
-- `backend/src/server.js` starts everything and reads console commands.
-- `backend/src/app.js` puts the Express app together, and `backend/src/routes/` has the routes.
-- `backend/src/commands.js` has the console commands.
+A request goes route → middleware → controller → service → database.
+
+```
+backend/src/
+├── server.js       starts everything and reads console commands
+├── app.js          puts the Express app together
+├── commands.js     the console commands
+├── config/         opens the database
+├── routes/         URLs and which middleware and controller they use
+├── middlewares/    login and role checks, error handling
+├── controllers/    read the request and send the response
+├── services/       the logic and the SQL
+├── validators/     patient field checks
+└── utils/          ApiError
+```
+
 - `frontend/src/services/` is where most of the frontend change is. It keeps the same function names, now using `fetch`. The screens are the same apart from the header text, a "Server unavailable" screen when the session can't be checked, and a message when logout fails.
+
+## Compared to for-mickey
+
+Both apps do the same job for the user. They have the same roles, the same field limits, the same 50-patient list and the same React and Vite frontend. The delete flag also works the same way in both: it only hides the button, and the role check is what actually protects the delete.
+
+The difference is who runs the backend. In `for-mickey` the browser talks directly to Firebase, and in this version it only talks to my server.
+
+| | `for-mickey` (Firebase) | This version |
+| --- | --- | --- |
+| **Backend code** | None of my own, only `firestore.rules` (about 60 lines) | Node and Express, about 630 lines that I maintain |
+| **Hosting** | Firebase Hosting, free Spark plan | My Pterodactyl panel, plus Nginx and my own domain |
+| **HTTPS** | Comes with Hosting | Nginx and a Let's Encrypt certificate |
+| **Database** | Cloud Firestore, run by Google | One SQLite file on my server |
+| **Login** | Firebase Authentication | My own: `scrypt` password hashes and a 7-day `HttpOnly` cookie |
+| **Login limit** | Handled by Firebase | None |
+| **Permissions** | Security Rules | Express middleware and validation |
+| **Live updates** | `onSnapshot` delivers the new data | Server-Sent Events signal a change, then the tab fetches the list again |
+| **Delete flag** | Remote Config, cached for up to 12 hours by default in production | A database row, picked up on the next "Refresh config" |
+| **Adding a user** | Create the account in the console, then a `/users/<UID>` document by hand | Paste one `user add` line into the panel console |
+| **Backups** | No backup step set up | `backup` console command, and I download the file |
+| **Running locally** | Node, plus Java for the emulators, and the flag still comes from the real project | Only Node |
+| **Testing access rules** | Rules tests against the Firestore emulator | API tests against a temporary database |
+| **Deploying** | `npx firebase deploy` from my machine | Zips through the panel, and the admin sets up the egg and Nginx ([DEPLOY.md](DEPLOY.md)) |
+| **Scaling** | Firebase handles it | One server process, because live updates are kept in memory |
+
+What I got from each:
+
+- **`for-mickey`** is far less work to run. Google looks after the servers, database, login and certificates, and it deploys with one command. The cost is that the app depends on Firebase's services and limits, and much of what happens is out of my sight.
+- **This version** has nothing tied to a vendor, and all the data sits in one file I can download. Everything from password hashing to the live list is code I can read and change. The cost is that security, backups, updates and uptime are now my job, and it needs more setup to deploy.
 
 ## Running it locally
 
@@ -120,28 +173,11 @@ It asks for the details and prints a `user add ...` line with only the password'
 
 ## Deploying
 
-The backend runs on my Pterodactyl panel, with Nginx on the same machine handling HTTPS.
-
-1. Build the frontend on my machine: `cd frontend && npm run build`.
-2. Create a server with a Node.js 24 egg, with `src/server.js` as the startup file.
-3. Upload `backend/src`, `backend/package.json` and `backend/package-lock.json` to `/home/container`, and the contents of `frontend/dist` to `/home/container/public`. Don't upload `node_modules`, because it's built for the machine it was installed on. There's no shell on the panel, so the install has to come from the egg. The generic Node egg runs `npm install` on startup when it finds a `package.json`, so I check that mine does. If the server stops with a "Cannot find package" error, it doesn't, and the panel admin has to change the egg.
-4. Generate a secret: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
-5. Upload a file called `.env` to `/home/container` with these settings. Eggs usually only show their own variables on the Startup tab, so the file is the reliable way. It sits outside `public`, so it's never served.
-
-   ```
-   NODE_ENV=production
-   DATA_DIR=/home/container/data
-   STATIC_DIR=/home/container/public
-   PROXY_SECRET=<the secret>
-   ```
-
-6. Start the server and read the console. A line saying `NODE_ENV is not production` means the `.env` file wasn't read, so stop and fix that first. Then type `help`. If the list prints, console input is reaching the app.
-7. Set up Nginx from `deploy/nginx.conf.example`, following the certificate steps at the top of that file. This needs access to the machine itself. I don't have SSH right now, so the panel admin has to do it and needs the domain, the allocation's IP and port, and the secret.
-8. Add the users, then check the site on the domain. Opening `http://<ip>:<port>` directly should give a 403.
+The backend runs on my Pterodactyl panel, with Nginx on the same machine handling HTTPS. The full steps are in [DEPLOY.md](DEPLOY.md).
 
 Things to know about production:
 
-- **Direct access.** The app rejects anything that didn't come through Nginx, using the secret header. Someone who types a password at the raw `http://<ip>:<port>` address would still send it unencrypted before seeing the error. If the panel can assign the port on `127.0.0.1`, that closes it completely.
+- **Security is kept basic on purpose.** This is an assignment with fake data. It has hashed passwords, `HttpOnly` cookies, role checks on the server, field validation and HTTPS. It leaves out a login limit, hashed session tokens and a check that requests came through Nginx, which I'd add before using it with real patients.
+- **Direct access.** The allocation has to be on `127.0.0.1` so only Nginx can reach the app. Otherwise the raw `http://<ip>:<port>` address is open and unencrypted.
 - **Backups.** Use the `backup` command and download the file from the panel's file manager, or stop the server before taking a panel backup. Copying the `.db` file while the app is running can miss recent writes.
 - **One process.** Live updates are kept in memory, so this only works with a single server process.
-- **Login limit.** 10 failed attempts per email and IP in 15 minutes, and 100 attempts of any kind per IP. It's kept in memory, so a restart resets it.

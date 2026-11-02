@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { createEventHub } from "../src/events.js";
+import { createEventHub } from "../src/services/events.js";
 import { api, signIn, startTestApp } from "./helpers.js";
 
 const PATIENT = { name: "Ravi Kumar", phone: "0987654321", condition: "Cough" };

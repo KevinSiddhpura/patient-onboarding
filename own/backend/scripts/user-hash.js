@@ -1,8 +1,8 @@
 import { createInterface } from "node:readline";
 import { Writable } from "node:stream";
 import { formatUserAddCommand } from "../src/commands.js";
-import { hashPassword } from "../src/passwords.js";
-import { isValidEmail, VALID_ROLES } from "../src/users.js";
+import { hashPassword } from "../src/services/passwords.js";
+import { isValidEmail, VALID_ROLES } from "../src/services/users.js";
 
 const MIN_PASSWORD_LENGTH = 8;
 

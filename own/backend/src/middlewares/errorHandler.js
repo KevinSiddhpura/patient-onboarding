@@ -1,10 +1,4 @@
-export class ApiError extends Error {
-  constructor(status, code) {
-    super(code);
-    this.status = status;
-    this.code = code;
-  }
-}
+import { ApiError } from "../utils/ApiError.js";
 
 export function errorHandler(error, req, res, next) {
   if (res.headersSent) {
@@ -17,7 +11,6 @@ export function errorHandler(error, req, res, next) {
     return;
   }
 
-  // Body parser and URL decoding failures arrive as plain errors with a 4xx status.
   if (error.status >= 400 && error.status < 500) {
     res.status(400).json({ error: { code: "invalid-argument" } });
     return;

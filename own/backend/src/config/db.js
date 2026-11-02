@@ -23,7 +23,7 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS patients_created_at ON patients (created_at DESC);
 
   CREATE TABLE IF NOT EXISTS sessions (
-    token_hash TEXT PRIMARY KEY,
+    token TEXT PRIMARY KEY,
     uid TEXT NOT NULL REFERENCES users ON DELETE CASCADE,
     expires_at TEXT NOT NULL
   );
@@ -46,13 +46,4 @@ export function openDb(path) {
   db.pragma("foreign_keys = ON");
   db.exec(SCHEMA);
   return db;
-}
-
-export function getFlag(db) {
-  const { value } = db.prepare("SELECT value FROM config WHERE key = 'show_delete_button'").get();
-  return value === "true";
-}
-
-export function setFlag(db, enabled) {
-  db.prepare("UPDATE config SET value = ? WHERE key = 'show_delete_button'").run(String(enabled));
 }

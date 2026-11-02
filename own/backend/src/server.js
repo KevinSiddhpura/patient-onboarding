@@ -4,8 +4,8 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { createApp } from "./app.js";
 import { runCommand } from "./commands.js";
-import { openDb } from "./db.js";
-import { deleteExpiredSessions } from "./sessions.js";
+import { openDb } from "./config/db.js";
+import { deleteExpiredSessions } from "./services/sessions.js";
 
 // A panel egg may only offer its own variables, so settings can also come from a file.
 if (existsSync(".env")) {
@@ -14,12 +14,6 @@ if (existsSync(".env")) {
 
 const backendRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const production = process.env.NODE_ENV === "production";
-const proxySecret = process.env.PROXY_SECRET || null;
-
-if (production && !proxySecret) {
-  console.error("PROXY_SECRET must be set in production.");
-  process.exit(1);
-}
 
 if (!production) {
   console.warn("NODE_ENV is not production: cookies are not Secure. Fine locally, not on a live site.");
@@ -37,12 +31,7 @@ if (!staticDir) {
   console.warn(`No frontend build at ${buildDir}. Only the API will be served.`);
 }
 
-const app = createApp({
-  db,
-  production,
-  proxySecret,
-  staticDir,
-});
+const app = createApp({ db, production, staticDir });
 
 const server = app.listen(port, "0.0.0.0", (error) => {
   if (error) {
@@ -51,7 +40,6 @@ const server = app.listen(port, "0.0.0.0", (error) => {
   console.log(`Listening on port ${server.address().port}`);
 });
 
-// The Pterodactyl console writes to stdin, and there is no shell to run scripts from.
 createInterface({ input: process.stdin }).on("line", (line) => {
   runCommand(db, line, console.log, { dataDir, events: app.locals.events });
 });

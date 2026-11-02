@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { createLoginLimiter } from "../src/loginLimiter.js";
-import { hashPassword, isPasswordHash, verifyPassword } from "../src/passwords.js";
-import { insertUser, removeUser } from "../src/users.js";
+import { hashPassword, isPasswordHash, verifyPassword } from "../src/services/passwords.js";
+import { insertUser, removeUser } from "../src/services/users.js";
 import { api, signIn, startTestApp, TEST_PASSWORD } from "./helpers.js";
 
 let ctx;
@@ -26,8 +25,6 @@ async function addUser(email = "doc@example.test", role = "doctor") {
     passwordHash: await hashPassword(TEST_PASSWORD),
   });
 }
-
-const cookieFrom = (response) => response.setCookie.split(";")[0];
 
 describe("passwords", () => {
   test("hashes are salted and verify only the right password", async () => {
@@ -96,6 +93,12 @@ describe("login", () => {
     assert.equal(response.status, 400);
     assert.equal(response.json.error.code, "auth/invalid-email");
   });
+
+  test("an email over 254 characters returns 400 auth/invalid-email", async () => {
+    const response = await login(`${"a".repeat(250)}@example.test`, TEST_PASSWORD);
+    assert.equal(response.status, 400);
+    assert.equal(response.json.error.code, "auth/invalid-email");
+  });
 });
 
 describe("session cookie", () => {
@@ -126,17 +129,6 @@ describe("session cookie", () => {
     } finally {
       await production.close();
     }
-  });
-
-  test("database stores the token's hash, not the token", async () => {
-    await addUser();
-    const response = await login("doc@example.test", TEST_PASSWORD);
-    const token = cookieFrom(response).split("=")[1];
-
-    const { token_hash: stored } = ctx.db.prepare("SELECT token_hash FROM sessions").get();
-
-    assert.ok(token.length > 0);
-    assert.notEqual(stored, token);
   });
 
   test("session lasts 7 days", async () => {
@@ -213,145 +205,6 @@ describe("/auth/me and logout", () => {
 
     const response = await api(ctx.baseUrl, `/api/users/${uid}`, { cookie });
     assert.equal(response.status, 401);
-  });
-});
-
-describe("login limit", () => {
-  async function failTenTimes(options) {
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      await login("doc@example.test", "wrong password", options);
-    }
-  }
-
-  test("11th attempt after 10 failures returns 429, even with the right password", async () => {
-    await addUser();
-    await failTenTimes();
-
-    const response = await login("doc@example.test", TEST_PASSWORD);
-
-    assert.equal(response.status, 429);
-    assert.equal(response.json.error.code, "auth/too-many-requests");
-  });
-
-  test("API responses are not stored by the browser", async () => {
-    const response = await fetch(`${ctx.baseUrl}/api/auth/me`);
-    assert.equal(response.headers.get("cache-control"), "no-store");
-  });
-
-  test("one IP trying many emails hits the per-IP limit", async () => {
-    const attempts = Array.from({ length: 100 }, (_, attempt) =>
-      login(`nobody${attempt}@example.test`, "wrong password"),
-    );
-    for (const response of await Promise.all(attempts)) {
-      assert.equal(response.status, 401);
-    }
-
-    const response = await login("one-more@example.test", "wrong password");
-    assert.equal(response.status, 429);
-  });
-
-  test("success clears the failure count", async () => {
-    await addUser();
-    for (let attempt = 0; attempt < 9; attempt += 1) {
-      await login("doc@example.test", "wrong password");
-    }
-    await login("doc@example.test", TEST_PASSWORD);
-    for (let attempt = 0; attempt < 9; attempt += 1) {
-      await login("doc@example.test", "wrong password");
-    }
-
-    const response = await login("doc@example.test", TEST_PASSWORD);
-    assert.equal(response.status, 200);
-  });
-
-  test("parallel wrong guesses cannot get past the limit", async () => {
-    await addUser();
-
-    const responses = await Promise.all(
-      Array.from({ length: 30 }, () => login("doc@example.test", "wrong password")),
-    );
-
-    const checked = responses.filter((response) => response.status === 401);
-    const blocked = responses.filter((response) => response.status === 429);
-    assert.equal(checked.length, 10);
-    assert.equal(blocked.length, 20);
-  });
-
-  test("a malformed password does not use up an attempt", async () => {
-    await addUser();
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      await login("doc@example.test", "");
-    }
-
-    const response = await login("doc@example.test", TEST_PASSWORD);
-    assert.equal(response.status, 200);
-  });
-
-  test("an email over 254 characters returns 400 auth/invalid-email", async () => {
-    const response = await login(`${"a".repeat(250)}@example.test`, TEST_PASSWORD);
-    assert.equal(response.status, 400);
-    assert.equal(response.json.error.code, "auth/invalid-email");
-  });
-
-  test("limiter refuses after max attempts and unblocks after the window", () => {
-    let time = 0;
-    const limiter = createLoginLimiter({ max: 2, windowMs: 1000, now: () => time });
-
-    assert.equal(limiter.tryAcquire("key"), true);
-    assert.equal(limiter.tryAcquire("key"), true);
-    assert.equal(limiter.tryAcquire("key"), false);
-
-    time = 1001;
-    assert.equal(limiter.tryAcquire("key"), true);
-  });
-
-  test("limiter forgets expired keys so memory does not grow forever", () => {
-    let time = 0;
-    const limiter = createLoginLimiter({ max: 2, windowMs: 1000, now: () => time });
-
-    limiter.tryAcquire("old");
-    time = 1001;
-    limiter.tryAcquire("new");
-
-    assert.equal(limiter.size(), 1);
-  });
-
-  test("limiter keeps at most maxKeys entries, dropping the oldest", () => {
-    const limiter = createLoginLimiter({ max: 1, maxKeys: 2 });
-
-    limiter.tryAcquire("first");
-    limiter.tryAcquire("second");
-    limiter.tryAcquire("third");
-
-    assert.equal(limiter.size(), 2);
-    assert.equal(limiter.tryAcquire("third"), false);
-    assert.equal(limiter.tryAcquire("first"), true);
-  });
-
-  test("with proxySecret, different X-Forwarded-For values count separately", async () => {
-    const proxied = await startTestApp({ proxySecret: "s3cret" });
-    const send = (ip, password) =>
-      api(proxied.baseUrl, "/api/auth/login", {
-        method: "POST",
-        body: { email: "doc@example.test", password },
-        headers: { "X-Proxy-Secret": "s3cret", "X-Forwarded-For": ip },
-      });
-    try {
-      await insertUser(proxied.db, {
-        email: "doc@example.test",
-        name: "Test User",
-        role: "doctor",
-        passwordHash: await hashPassword(TEST_PASSWORD),
-      });
-      for (let attempt = 0; attempt < 10; attempt += 1) {
-        await send("203.0.113.1", "wrong password");
-      }
-
-      assert.equal((await send("203.0.113.1", TEST_PASSWORD)).status, 429);
-      assert.equal((await send("203.0.113.2", TEST_PASSWORD)).status, 200);
-    } finally {
-      await proxied.close();
-    }
   });
 });
 

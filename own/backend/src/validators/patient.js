@@ -1,6 +1,5 @@
-import { ApiError } from "./errors.js";
+import { ApiError } from "../utils/ApiError.js";
 
-// Keep in step with FIELD_LIMITS in the frontend's constants.js.
 const FIELD_LIMITS = {
   name: 100,
   phone: 20,

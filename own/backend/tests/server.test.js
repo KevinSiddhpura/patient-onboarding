@@ -6,8 +6,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { openDb } from "../src/db.js";
-import { findUserByEmail } from "../src/users.js";
+import { openDb } from "../src/config/db.js";
+import { findUserByEmail } from "../src/services/users.js";
 
 const SERVER = resolve("src/server.js");
 
@@ -76,47 +76,15 @@ const isUp = async (port) => (await fetch(`http://127.0.0.1:${port}/api/auth/me`
 const portOf = (state) => Number(state.stdout.match(/Listening on port (\d+)/)[1]);
 
 describe("server", () => {
-  test("exits non-zero in production without PROXY_SECRET", async () => {
-    const state = runNode("src/server.js", { NODE_ENV: "production", PROXY_SECRET: "" });
-    assert.equal(await state.exited, 1);
-    assert.match(state.stderr, /PROXY_SECRET/);
-  });
-
-  test("starts in production with PROXY_SECRET and requires the header", async () => {
-    const state = await startServer({ NODE_ENV: "production", PROXY_SECRET: "s3cret" });
-    const port = portOf(state);
-
-    assert.equal((await fetch(`http://127.0.0.1:${port}/api/auth/me`)).status, 403);
-    const allowed = await fetch(`http://127.0.0.1:${port}/api/auth/me`, {
-      headers: { "X-Proxy-Secret": "s3cret" },
-    });
-    assert.equal(allowed.status, 200);
-  });
-
   test("reads settings from a .env file in the working directory", async () => {
     const port = await freePort();
-    writeFileSync(join(dataDir, ".env"), "NODE_ENV=production\nPROXY_SECRET=from-file\n");
-
-    const state = runNode(
-      SERVER,
-      { NODE_ENV: undefined, PROXY_SECRET: undefined, PORT: String(port) },
-      dataDir,
-    );
-    await until(() => state.stdout.includes("Listening") || state.child.exitCode !== null, "the server");
-
-    assert.equal((await fetch(`http://127.0.0.1:${port}/api/auth/me`)).status, 403);
-    const allowed = await fetch(`http://127.0.0.1:${port}/api/auth/me`, {
-      headers: { "X-Proxy-Secret": "from-file" },
-    });
-    assert.equal(allowed.status, 200);
-  });
-
-  test("a .env file that turns on production without a secret stops the server", async () => {
     writeFileSync(join(dataDir, ".env"), "NODE_ENV=production\n");
 
-    const state = runNode(SERVER, { NODE_ENV: undefined, PROXY_SECRET: undefined }, dataDir);
+    const state = runNode(SERVER, { NODE_ENV: undefined, PORT: String(port) }, dataDir);
+    await until(() => state.stdout.includes("Listening") || state.child.exitCode !== null, "the server");
 
-    assert.equal(await state.exited, 1);
+    assert.equal(await isUp(port), true);
+    assert.doesNotMatch(state.stderr, /not production/i);
   });
 
   test("warns when it is not running in production mode", async () => {
@@ -125,7 +93,7 @@ describe("server", () => {
   });
 
   test("does not warn in production mode", async () => {
-    const state = await startServer({ NODE_ENV: "production", PROXY_SECRET: "s3cret" });
+    const state = await startServer({ NODE_ENV: "production" });
     assert.doesNotMatch(state.stderr, /not production/i);
   });
 

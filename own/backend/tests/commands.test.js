@@ -5,10 +5,10 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import Database from "better-sqlite3";
 import { formatUserAddCommand, runCommand } from "../src/commands.js";
-import { openDb } from "../src/db.js";
-import { hashPassword } from "../src/passwords.js";
-import { createSession } from "../src/sessions.js";
-import { findUserByEmail, insertUser } from "../src/users.js";
+import { openDb } from "../src/config/db.js";
+import { hashPassword } from "../src/services/passwords.js";
+import { createSession } from "../src/services/sessions.js";
+import { findUserByEmail, insertUser } from "../src/services/users.js";
 import { api, signIn, startTestApp, TEST_PASSWORD } from "./helpers.js";
 
 const VALID_HASH = await hashPassword(TEST_PASSWORD);

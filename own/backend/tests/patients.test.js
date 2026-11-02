@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
-import { setFlag } from "../src/db.js";
+import { setFlag } from "../src/services/config.js";
 import { api, signIn, startTestApp } from "./helpers.js";
 
 const EXISTING = "existing-patient";

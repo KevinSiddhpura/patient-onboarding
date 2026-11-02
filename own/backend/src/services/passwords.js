@@ -22,10 +22,3 @@ export async function verifyPassword(password, stored) {
 export function isPasswordHash(value) {
   return HASH_FORMAT.test(value);
 }
-
-const dummyHash = hashPassword(randomBytes(16).toString("hex"));
-
-// Takes as long as a real check, so response time does not reveal which emails exist.
-export async function burnPasswordCheck(password) {
-  await verifyPassword(password, await dummyHash);
-}

@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openDb } from "../src/db.js";
-import { hashPassword } from "../src/passwords.js";
-import { findUserByEmail, insertUser } from "../src/users.js";
+import { openDb } from "../src/config/db.js";
+import { hashPassword } from "../src/services/passwords.js";
+import { findUserByEmail, insertUser } from "../src/services/users.js";
 
 const PASSWORD = "local-demo-password";
 const ACCOUNTS = [

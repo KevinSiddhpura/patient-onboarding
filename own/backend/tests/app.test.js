@@ -3,8 +3,9 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, test } from "node:test";
-import { openDb } from "../src/db.js";
-import { ApiError, errorHandler } from "../src/errors.js";
+import { openDb } from "../src/config/db.js";
+import { errorHandler } from "../src/middlewares/errorHandler.js";
+import { ApiError } from "../src/utils/ApiError.js";
 import { api, startTestApp } from "./helpers.js";
 
 let ctx;
@@ -106,17 +107,6 @@ describe("request handling", () => {
     assert.equal(response.json.error.code, "invalid-argument");
   });
 
-  test("non-GET without JSON content type returns 400 invalid-argument", async () => {
-    ctx = await startTestApp();
-    const response = await api(ctx.baseUrl, "/api/anything", {
-      method: "POST",
-      raw: "name=x",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    });
-    assert.equal(response.status, 400);
-    assert.equal(response.json.error.code, "invalid-argument");
-  });
-
   test("errorHandler turns an unexpected error into 500 internal with no stack in the body", (t) => {
     t.mock.method(console, "error", () => {});
     const res = fakeResponse();
@@ -134,44 +124,6 @@ describe("request handling", () => {
 
     assert.equal(res.sentStatus, 403);
     assert.deepEqual(res.sentBody, { error: { code: "permission-denied" } });
-  });
-});
-
-describe("proxy secret", () => {
-  test("a request without the header gets 403 permission-denied", async () => {
-    ctx = await startTestApp({ proxySecret: "s3cret" });
-    const response = await api(ctx.baseUrl, "/api/nope");
-    assert.equal(response.status, 403);
-    assert.equal(response.json.error.code, "permission-denied");
-  });
-
-  test("a wrong secret gets 403", async () => {
-    ctx = await startTestApp({ proxySecret: "s3cret" });
-    const response = await api(ctx.baseUrl, "/api/nope", { headers: { "X-Proxy-Secret": "wrong" } });
-    assert.equal(response.status, 403);
-  });
-
-  test("the right secret passes", async () => {
-    ctx = await startTestApp({ proxySecret: "s3cret" });
-    const response = await api(ctx.baseUrl, "/api/nope", { headers: { "X-Proxy-Secret": "s3cret" } });
-    assert.equal(response.status, 404);
-  });
-
-  test("static files are also blocked without the header", async () => {
-    ctx = await startTestApp({ proxySecret: "s3cret", staticDir: tempStaticDir() });
-    const response = await api(ctx.baseUrl, "/style.css");
-    assert.equal(response.status, 403);
-    assert.equal(response.text.includes("body{}"), false);
-  });
-
-  test("trust proxy is 1 with a secret", async () => {
-    ctx = await startTestApp({ proxySecret: "s3cret" });
-    assert.equal(ctx.app.get("trust proxy"), 1);
-  });
-
-  test("X-Forwarded-For is not trusted without a secret", async () => {
-    ctx = await startTestApp();
-    assert.equal(ctx.app.get("trust proxy"), false);
   });
 });
 

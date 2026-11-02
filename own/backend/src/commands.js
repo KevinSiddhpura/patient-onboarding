@@ -1,8 +1,8 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { getFlag, setFlag } from "./db.js";
-import { isPasswordHash } from "./passwords.js";
-import { insertUser, isValidEmail, listUsers, removeUser, VALID_ROLES } from "./users.js";
+import { getFlag, setFlag } from "./services/config.js";
+import { isPasswordHash } from "./services/passwords.js";
+import { insertUser, isValidEmail, listUsers, removeUser, VALID_ROLES } from "./services/users.js";
 
 const HELP = `Commands:
   flag                                          show the delete button flag
@@ -10,7 +10,7 @@ const HELP = `Commands:
   user add <email> <role> <hash> <name...>      add a user (make the line with npm run user:hash)
   user remove <email>                           remove a user and their sessions
   user list                                     list users
-  backup                                        write a copy of the database to backups/
+  backup                                        write a copy of the database to data/backups
   help                                          show this list`;
 
 const USER_ADD_USAGE = "Usage: user add <email> <role> <hash> <name...>";

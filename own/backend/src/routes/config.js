@@ -1,13 +1,9 @@
 import express from "express";
-import { getFlag } from "../db.js";
-import { requireSession, requireStaff } from "../middleware.js";
+import { getConfig } from "../controllers/config.js";
+import { requireSession, requireStaff } from "../middlewares/auth.js";
 
-export function createConfigRouter() {
-  const router = express.Router();
+const router = express.Router();
 
-  router.get("/", requireSession, requireStaff, (req, res) => {
-    res.json({ show_delete_button: getFlag(req.app.locals.db) });
-  });
+router.get("/", requireSession, requireStaff, getConfig);
 
-  return router;
-}
+export default router;
