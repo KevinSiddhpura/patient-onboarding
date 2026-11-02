@@ -6,6 +6,7 @@ export const ROLES = {
 export const COLLECTIONS = {
   USERS: "users",
   PATIENTS: "patients",
+  CONFIG: "config",
 };
 
 // Keep in step with isValidText() limits in firestore.rules.

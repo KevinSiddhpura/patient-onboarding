@@ -26,6 +26,18 @@ service cloud.firestore {
         && isValidText(patient.condition, 500);
     }
 
+    // Rules can't read Remote Config, so the delete switch lives in Firestore.
+    // A missing document counts as off.
+    function deleteEnabled() {
+      return exists(/databases/$(database)/documents/config/flags)
+        && get(/databases/$(database)/documents/config/flags).data.delete_enabled == true;
+    }
+
+    match /config/flags {
+      allow get: if hasRole('receptionist') || hasRole('doctor');
+      allow list, create, update, delete: if false;
+    }
+
     match /users/{userId} {
       allow get: if signedIn() && request.auth.uid == userId;
       allow list, create, update, delete: if false;
@@ -50,7 +62,7 @@ service cloud.firestore {
         && hasValidPatientText(request.resource.data)
         && request.resource.data.updatedAt == request.time;
 
-      allow delete: if hasRole('doctor');
+      allow delete: if hasRole('doctor') && deleteEnabled();
     }
 
     match /{document=**} {

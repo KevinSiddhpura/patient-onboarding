@@ -11,7 +11,7 @@ The browser talks to Firebase directly through the Firebase Web SDK. There are f
 - **Authentication** (email/password) says who is signed in.
 - **Cloud Firestore** stores the data in two collections.
 - **Security Rules** (`firestore.rules`) decide what each role may do. The UI only hides buttons; the rules are what actually allow or deny a request.
-- **Remote Config** holds one flag, `show_delete_button`, which controls whether the doctor sees the Delete button.
+- **Remote Config** holds one flag, `show_delete_button`, which controls whether the doctor sees the Delete button. Rules can't read Remote Config, so the rules check a separate switch in Firestore before allowing a delete.
 
 ```mermaid
 flowchart LR
@@ -36,6 +36,8 @@ flowchart LR
 
 `/patients/{patientId}` has `patientId`, `name`, `phone`, `condition`, `createdAt` and `updatedAt`. The text fields must be trimmed and non-empty, with limits of 100, 20 and 500 characters. The timestamps are server time. No other fields are accepted, and `patientId` and `createdAt` cannot change after create.
 
+`/config/flags` has one boolean field, `delete_enabled`. I change it by hand in the Firebase console. Staff can read it and the app can never write it. If the document is missing, deleting is off.
+
 ### Roles
 
 | Action | Receptionist | Doctor | Signed out / no valid role |
@@ -43,9 +45,9 @@ flowchart LR
 | Create patient | Allowed | Denied | Denied |
 | Read patient list | Allowed | Allowed | Denied |
 | Edit patient | Denied | Allowed | Denied |
-| Delete patient | Denied | Allowed | Denied |
+| Delete patient | Denied | Allowed while `delete_enabled` is on | Denied |
 
-The rules look up the role from `/users/{uid}` on every request, so the role never comes from the client. A missing profile or any other role value gives no access.
+The rules look up the role from `/users/{uid}` on every request, so the role never comes from the client. A missing profile or any other role value gives no access. Each delete also reads `/config/flags`, so a doctor can't delete through an old page or by calling Firestore directly when it's off.
 
 ### Code layout
 
@@ -62,7 +64,7 @@ The rules look up the role from `/users/{uid}` on every request, so the role nev
 3. The receptionist sees the registration form and the patient list. Adding a patient writes a new document to `/patients`.
 4. The doctor sees the same list with no form. The list is a live Firestore listener, so a patient the receptionist adds appears without a reload. It shows the 50 most recent patients.
 5. The doctor can edit a patient's name, phone and condition. Each edit updates `updatedAt`.
-6. The doctor sees Delete only when `show_delete_button` is `true` in Remote Config. Pressing "Refresh config" in the app fetches the latest value, so the button can be turned on and off from the console without a redeploy.
+6. The doctor sees Delete only when `show_delete_button` is `true` in Remote Config and `delete_enabled` is `true` in `/config/flags`. Pressing "Refresh config" in the app fetches the latest Remote Config value. The app listens to `/config/flags`, so turning `delete_enabled` off blocks deletes and hides the button straight away.
 7. Logout returns to the login page.
 
 ## Testing
@@ -88,7 +90,7 @@ To try the app by hand against local emulators:
 2. Terminal 2: `npm run seed`. This creates two local accounts and their profiles. Emulator data is in memory, so run it again after every emulator restart.
 3. Set `VITE_USE_EMULATORS=true` in `.env.local`.
 4. Terminal 2: `npm run dev` and open the address Vite prints.
-5. Sign in as `receptionist@example.test` or `doctor@example.test`. The password is printed by the seed script. These accounts exist only in the emulator.
+5. Sign in as `receptionist@example.test` or `doctor@example.test`. The password is printed by the seed script. These accounts exist only in the emulator. The seed script also turns `delete_enabled` on.
 6. Set `VITE_USE_EMULATORS=false` again when done.
 
 There is no Remote Config emulator, so even a local run asks the real project for the flag.
@@ -111,3 +113,4 @@ Things to know about production:
 - **Rules.** `firestore.rules` is the source of truth. Publish rules with the deploy command, not by editing them in the console.
 - **Accounts.** There is no sign-up screen. I add each account under Authentication in the console, then create `/users/<UID>` in Firestore with `name` and `role`. The document ID has to be exactly the UID. The current accounts are `rec@example.com` (receptionist) and `doc@test.com` (doctor). Passwords are not kept in the repo.
 - **Remote Config.** Deploying `remoteconfig` replaces the published template, which resets `show_delete_button` to `false`. To flip the flag, change it in the console and publish. The app caches the value for `VITE_RC_FETCH_INTERVAL_SECONDS` (12 hours by default in a production build), so "Refresh config" inside that interval is answered from cache.
+- **Delete switch.** Create `/config/flags` in the Firestore console with `delete_enabled` as a boolean. Turning deleting off only needs this switch, and it takes effect straight away. Turning it on needs both this and `show_delete_button`.

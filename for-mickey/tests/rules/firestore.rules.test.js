@@ -53,6 +53,7 @@ beforeEach(async () => {
     await setDoc(doc(db, "users", DOCTOR), { name: "Test Doctor", role: "doctor" });
     await setDoc(doc(db, "users", BAD_ROLE), { name: "Intruder", role: "admin" });
     await setDoc(doc(db, "users", WRONG_CASE_ROLE), { name: "Typo", role: "Doctor" });
+    await setDoc(doc(db, "config", "flags"), { delete_enabled: true });
     await setDoc(doc(db, "patients", EXISTING_PATIENT), {
       patientId: EXISTING_PATIENT,
       name: "Asha Rao",
@@ -160,6 +161,58 @@ describe("users without a valid role", () => {
       await assertFails(deleteDoc(doc(dbAs(uid), "patients", EXISTING_PATIENT)));
     });
   }
+});
+
+describe("delete switch", () => {
+  const setSwitch = (data) =>
+    testEnv.withSecurityRulesDisabled((context) =>
+      setDoc(doc(context.firestore(), "config", "flags"), data),
+    );
+  const removeSwitch = () =>
+    testEnv.withSecurityRulesDisabled((context) =>
+      deleteDoc(doc(context.firestore(), "config", "flags")),
+    );
+  const deleteAs = (uid) => deleteDoc(doc(dbAs(uid), "patients", EXISTING_PATIENT));
+
+  test("off blocks a doctor's delete", async () => {
+    await setSwitch({ delete_enabled: false });
+    await assertFails(deleteAs(DOCTOR));
+  });
+
+  test("a missing document or a non-boolean value blocks a doctor's delete", async () => {
+    await removeSwitch();
+    await assertFails(deleteAs(DOCTOR));
+    await setSwitch({ delete_enabled: "true" });
+    await assertFails(deleteAs(DOCTOR));
+  });
+
+  test("is read on every delete", async () => {
+    await setSwitch({ delete_enabled: false });
+    await assertFails(deleteAs(DOCTOR));
+    await setSwitch({ delete_enabled: true });
+    await assertSucceeds(deleteAs(DOCTOR));
+  });
+
+  test("on does not let a receptionist delete", async () => {
+    await assertFails(deleteAs(RECEPTIONIST));
+  });
+
+  test("staff can read it", async () => {
+    await assertSucceeds(getDoc(doc(dbAs(DOCTOR), "config", "flags")));
+    await assertSucceeds(getDoc(doc(dbAs(RECEPTIONIST), "config", "flags")));
+  });
+
+  test("anyone else cannot read it", async () => {
+    await assertFails(getDoc(doc(signedOutDb(), "config", "flags")));
+    await assertFails(getDoc(doc(dbAs(NO_PROFILE), "config", "flags")));
+    await assertFails(getDoc(doc(dbAs(BAD_ROLE), "config", "flags")));
+  });
+
+  test("nobody can change it from the app", async () => {
+    await assertFails(setDoc(doc(dbAs(DOCTOR), "config", "flags"), { delete_enabled: false }));
+    await assertFails(updateDoc(doc(dbAs(DOCTOR), "config", "flags"), { delete_enabled: false }));
+    await assertFails(deleteDoc(doc(dbAs(DOCTOR), "config", "flags")));
+  });
 });
 
 describe("patient create validation", () => {

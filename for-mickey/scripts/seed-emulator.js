@@ -55,12 +55,26 @@ async function writeProfile(uid, { name, role }) {
   }
 }
 
+async function writeDeleteSwitch() {
+  const url = `${FIRESTORE_URL}/projects/${projectId}/databases/(default)/documents/config/flags`;
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: "Bearer owner" },
+    body: JSON.stringify({ fields: { delete_enabled: { booleanValue: true } } }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Could not write the delete switch: ${await response.text()}`);
+  }
+}
+
 try {
   for (const user of TEST_USERS) {
     const uid = await ensureAuthUser(user.email);
     await writeProfile(uid, user);
     console.log(`${user.role}: ${user.email} (uid ${uid})`);
   }
+  await writeDeleteSwitch();
   console.log(`Password for both local accounts: ${LOCAL_PASSWORD}`);
 } catch (error) {
   console.error("Seeding failed. Are the emulators running (npm run emulators)?");

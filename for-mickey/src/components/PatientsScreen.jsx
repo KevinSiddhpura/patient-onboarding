@@ -1,4 +1,5 @@
 import { PATIENT_LIST_LIMIT, ROLES } from "../constants.js";
+import { useDeleteEnabled } from "../hooks/useDeleteEnabled.js";
 import { usePatients } from "../hooks/usePatients.js";
 import { useRemoteConfig } from "../hooks/useRemoteConfig.js";
 import { createPatient } from "../services/patients.js";
@@ -10,9 +11,11 @@ import PatientList from "./PatientList.jsx";
 export default function PatientsScreen({ role }) {
   const { status, patients, error } = usePatients();
   const config = useRemoteConfig();
+  const deleteEnabled = useDeleteEnabled();
 
   const isReceptionist = role === ROLES.RECEPTIONIST;
   const isDoctor = role === ROLES.DOCTOR;
+  const showDeleteButton = config.showDeleteButton && deleteEnabled;
 
   return (
     <main className="container">
@@ -42,7 +45,7 @@ export default function PatientsScreen({ role }) {
 
         {isDoctor && (
           <ConfigStatus
-            showDeleteButton={config.showDeleteButton}
+            showDeleteButton={showDeleteButton}
             status={config.status}
             onRefresh={config.refresh}
           />
@@ -53,7 +56,7 @@ export default function PatientsScreen({ role }) {
           patients={patients}
           error={error}
           canEdit={isDoctor}
-          canDelete={isDoctor && config.showDeleteButton}
+          canDelete={isDoctor && showDeleteButton}
         />
       </section>
     </main>
