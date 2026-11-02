@@ -1,6 +1,6 @@
 # Replace example.com and APP_ADDRESS.
 # APP_ADDRESS is the IP and port shown on the server's allocation in the panel.
-# The allocation should be on 127.0.0.1, so only Nginx can reach the app.
+# On a public IP, block the port from outside too, so only Nginx can reach the app.
 #
 # The certificate has to exist before Nginx will accept the second block.
 # Add only the first block, run "certbot certonly --nginx -d example.com",
